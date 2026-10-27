@@ -8,15 +8,18 @@
  * incident engine and the dashboard.
  *
  * TODO (issue + PR per item):
- *  - [ ] Derive edges from TelemetryEvent traces (parent span -> child span = CALLS).
+ *  - [x] Derive edges from TelemetryEvent traces (parent span -> child span = CALLS).
  *  - [ ] Persist the graph (PostgreSQL adjacency) and expose a query API.
  *  - [ ] Layer in DEPLOYED / CHANGED_BY / AFFECTS edges.
  *  - [ ] Expose impact analysis through the core API.
  *
  * `downstreamImpact` below is a working starting point (BFS over the graph),
  * already unit-tested, that Member 2's ranking can use immediately.
+ * `deriveGraphFromSpans` (in ./deriveGraph.ts) builds the graph from traces.
  */
 import type { DependencyGraph, ImpactResult } from '@tracelens/shared';
+
+export * from './deriveGraph.js';
 
 /**
  * Breadth-first traversal from `start`, returning all reachable node ids
