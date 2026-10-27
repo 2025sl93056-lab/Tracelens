@@ -34,3 +34,6 @@ logs/
 *.sqlite
 *.sqlite3
 pgdata/
+
+# Internal planning docs
+docs/superpowers/
