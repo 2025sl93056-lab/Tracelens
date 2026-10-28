@@ -37,15 +37,18 @@ services:
 
   # --- Application services (uncomment as each package gains a Dockerfile) ---
   #
-  # ingestion:
-  #   build: ./packages/ingestion
-  #   environment:
-  #     INGESTION_PORT: ${INGESTION_PORT:-4001}
-  #     INGESTION_API_KEY: ${INGESTION_API_KEY:-dev-ingest-key}
-  #     POSTGRES_HOST: postgres
-  #   ports: ['${INGESTION_PORT:-4001}:4001']
-  #   depends_on:
-  #     postgres: { condition: service_healthy }
+  ingestion:
+    build: ./packages/ingestion
+    environment:
+      INGESTION_PORT: ${INGESTION_PORT:-4001}
+      INGESTION_API_KEY: ${INGESTION_API_KEY:-dev-ingest-key}
+      POSTGRES_HOST: postgres
+      POSTGRES_USER: ${POSTGRES_USER:-tracelens}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-tracelens}
+      POSTGRES_DB: ${POSTGRES_DB:-tracelens}
+    ports: ['${INGESTION_PORT:-4001}:4001']
+    depends_on:
+      postgres: { condition: service_healthy }
   #
   # api:
   #   build: ./packages/api
