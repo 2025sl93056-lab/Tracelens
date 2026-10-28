@@ -27,9 +27,23 @@ export interface IncidentSummary {
   affectedServices: string[];
 }
 
+export interface CreateUserRequest {
+  username: string;
+  password: string;
+  role: UserRole;
+}
+
+export interface CreateUserResponse {
+  id: string;
+  username: string;
+  role: UserRole;
+}
+
 /** Canonical route paths the frontend calls. Keep in sync on both sides. */
 export const API_ROUTES = {
   login: '/auth/login',
+  users: '/auth/users',
+  createUser: '/auth/register',
   incidents: '/incidents',
   incident: (id: string) => `/incidents/${id}`,
   services: '/services',
