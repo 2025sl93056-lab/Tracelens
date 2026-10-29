@@ -26,8 +26,8 @@ export function parseTelemetryEvent(input: unknown): TelemetryEvent {
   if (typeof e.name !== 'string' || e.name.length === 0) {
     throw new Error('telemetry event requires a non-empty "name"');
   }
-  if (e.value !== undefined && typeof e.value !== 'number') {
-    throw new Error('telemetry "value" must be a number when present');
+  if (e.value !== undefined && (typeof e.value !== 'number' || !Number.isFinite(e.value))) {
+    throw new Error('telemetry "value" must be a finite number when present');
   }
   return input as TelemetryEvent;
 }

@@ -29,6 +29,18 @@ describe('parseTelemetryEvent', () => {
     ).toThrow(/timestamp/);
   });
 
+  it.each([NaN, Infinity, -Infinity])('rejects non-finite telemetry value %s', (value) => {
+    expect(() =>
+      parseTelemetryEvent({
+        type: 'metric',
+        service: 'payment-service',
+        timestamp: '2026-10-18T14:32:18.000Z',
+        name: 'http.latency.ms',
+        value,
+      }),
+    ).toThrow(/must be a finite number/);
+  });
+
   it('rejects a non-object', () => {
     expect(() => parseTelemetryEvent('oops')).toThrow(/must be an object/);
   });
