@@ -19,63 +19,69 @@ function RequireAdmin({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
-function Layout({ children }: { children: ReactNode }) {
+function Sidebar() {
   const { role, logout } = useAuth();
+  const initials = role === 'admin' ? 'AD' : 'VI';
+
   return (
-    <div style={{ fontFamily: 'system-ui, sans-serif', minHeight: '100vh', background: '#fafafa' }}>
-      <nav
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          padding: '0 1.5rem',
-          height: 52,
-          background: '#1a1a2e',
-          color: '#fff',
-          gap: 4,
-        }}
-      >
-        <strong style={{ marginRight: '1.5rem', letterSpacing: '0.03em' }}>TraceLens</strong>
-        <NavLink to="/incidents" style={navLinkStyle}>
-          Incidents
+    <aside className="sidebar">
+      <div className="sidebar-logo">
+        <div className="sidebar-logo-icon">🔭</div>
+        <div className="sidebar-logo-text">
+          <span className="sidebar-logo-name">TraceLens</span>
+          <span className="sidebar-logo-tagline">Alert → Root Cause</span>
+        </div>
+      </div>
+
+      <nav className="sidebar-nav">
+        <span className="sidebar-section-label">Investigation</span>
+
+        <NavLink to="/incidents" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
+          <span className="nav-link-icon">⚡</span>
+          <span className="nav-link-label">Incidents</span>
         </NavLink>
-        <NavLink to="/graph" style={navLinkStyle}>
-          Graph
+
+        <NavLink to="/graph" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
+          <span className="nav-link-icon">🕸️</span>
+          <span className="nav-link-label">Service Graph</span>
         </NavLink>
+
         {role === 'admin' && (
-          <NavLink to="/users" style={navLinkStyle}>
-            Users
-          </NavLink>
+          <>
+            <span className="sidebar-section-label" style={{ marginTop: 8 }}>Administration</span>
+            <NavLink to="/users" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
+              <span className="nav-link-icon">👥</span>
+              <span className="nav-link-label">Users</span>
+            </NavLink>
+          </>
         )}
-        <button
-          onClick={logout}
-          style={{
-            marginLeft: 'auto',
-            background: 'transparent',
-            border: '1px solid rgba(255,255,255,0.3)',
-            color: 'rgba(255,255,255,0.7)',
-            padding: '4px 14px',
-            borderRadius: 4,
-            cursor: 'pointer',
-            fontSize: '0.85rem',
-          }}
-        >
-          Sign out
-        </button>
       </nav>
-      <main style={{ maxWidth: 1000, margin: '0 auto', padding: '2rem 1.5rem' }}>{children}</main>
-    </div>
+
+      <div className="sidebar-footer">
+        <div className="sidebar-user">
+          <div className="sidebar-avatar">{initials}</div>
+          <div className="sidebar-user-info">
+            <div className="sidebar-user-name">{role === 'admin' ? 'Admin' : 'Viewer'}</div>
+            <div className="sidebar-user-role">{role}</div>
+          </div>
+          <button className="btn-logout" onClick={logout} title="Sign out">
+            ⎋
+          </button>
+        </div>
+      </div>
+    </aside>
   );
 }
 
-function navLinkStyle({ isActive }: { isActive: boolean }): React.CSSProperties {
-  return {
-    color: isActive ? '#fff' : 'rgba(255,255,255,0.6)',
-    textDecoration: 'none',
-    padding: '4px 12px',
-    borderRadius: 4,
-    fontWeight: isActive ? 600 : 400,
-    background: isActive ? 'rgba(255,255,255,0.1)' : 'transparent',
-  };
+function Layout({ children }: { children: ReactNode }) {
+  return (
+    <div className="app-shell">
+      <Sidebar />
+      <div className="main-content">
+        <main className="page-body">{children}</main>
+      </div>
+    </div>
+  );
 }
 
 export function App() {

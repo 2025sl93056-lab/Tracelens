@@ -28,90 +28,94 @@ export function LoginPage() {
   }
 
   return (
-    <main
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        padding: '5rem 1rem',
-        fontFamily: 'system-ui, sans-serif',
-      }}
-    >
-      <h1 style={{ margin: '0 0 0.25rem' }}>TraceLens</h1>
-      <p style={{ color: '#888', margin: '0 0 2rem' }}>From Alert to Root Cause.</p>
-      <form onSubmit={handleSubmit} style={formStyle}>
-        <label style={labelStyle}>
-          Username
-          <input
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            style={inputStyle}
-            required
-            autoFocus
-            autoComplete="username"
-          />
-        </label>
-        <label style={labelStyle}>
-          Password
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            style={inputStyle}
-            required
-            autoComplete="current-password"
-          />
-        </label>
-        {error && <p style={{ color: '#f44336', margin: 0, fontSize: '0.9rem' }}>{error}</p>}
-        <button type="submit" disabled={loading} style={btnStyle}>
-          {loading ? 'Signing in…' : 'Sign in'}
-        </button>
-        <button type="button" onClick={demoLogin} style={demoBtnStyle}>
-          Try demo (no backend needed)
-        </button>
-      </form>
-    </main>
+    <div className="login-root">
+      <div className="login-brand">
+        <div className="login-brand-logo">🔭</div>
+        <div className="login-brand-name">TraceLens</div>
+        <div className="login-brand-tagline">
+          Incident intelligence that goes from alert to root cause — automatically.
+        </div>
+
+        <div className="login-features">
+          <div className="login-feature">
+            <span className="login-feature-icon">⚡</span>
+            <span className="login-feature-text">Automatic incident detection & timeline generation</span>
+          </div>
+          <div className="login-feature">
+            <span className="login-feature-icon">🔗</span>
+            <span className="login-feature-text">Temporal & deployment correlation analysis</span>
+          </div>
+          <div className="login-feature">
+            <span className="login-feature-icon">🕸️</span>
+            <span className="login-feature-text">Live service dependency graph with impact analysis</span>
+          </div>
+          <div className="login-feature">
+            <span className="login-feature-icon">🎯</span>
+            <span className="login-feature-text">Ranked root-cause candidates with confidence scoring</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="login-form-side">
+        <div className="login-form-box">
+          <div className="login-form-title">Welcome back</div>
+          <div className="login-form-subtitle">Sign in to your TraceLens workspace</div>
+
+          <form className="login-form" onSubmit={handleSubmit}>
+            <div className="form-group">
+              <label className="form-label" htmlFor="username">Username</label>
+              <input
+                id="username"
+                className="form-input"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                required
+                autoFocus
+                autoComplete="username"
+                placeholder="your-username"
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label" htmlFor="password">Password</label>
+              <input
+                id="password"
+                type="password"
+                className="form-input"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                autoComplete="current-password"
+                placeholder="••••••••"
+              />
+            </div>
+
+            {error && (
+              <div className="alert alert-error">
+                <span>⚠</span>
+                <span>{error}</span>
+              </div>
+            )}
+
+            <button type="submit" disabled={loading} className="btn btn-primary btn-lg btn-full">
+              {loading ? (
+                <>
+                  <span className="spinner" style={{ width: 16, height: 16 }} />
+                  Signing in…
+                </>
+              ) : (
+                'Sign in'
+              )}
+            </button>
+
+            <div className="login-divider">or</div>
+
+            <button type="button" onClick={demoLogin} className="btn btn-secondary btn-full">
+              🚀&nbsp; Try demo — no backend needed
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
   );
 }
-
-const formStyle: React.CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '1rem',
-  width: 320,
-  padding: '2rem',
-  border: '1px solid #e0e0e0',
-  borderRadius: 8,
-};
-const labelStyle: React.CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 6,
-  fontWeight: 500,
-  fontSize: '0.9rem',
-};
-const inputStyle: React.CSSProperties = {
-  padding: '8px 12px',
-  border: '1px solid #ccc',
-  borderRadius: 4,
-  fontSize: '1rem',
-};
-const btnStyle: React.CSSProperties = {
-  padding: '10px',
-  background: '#1a1a2e',
-  color: '#fff',
-  border: 'none',
-  borderRadius: 4,
-  fontSize: '1rem',
-  cursor: 'pointer',
-  marginTop: '0.5rem',
-};
-const demoBtnStyle: React.CSSProperties = {
-  padding: '9px',
-  background: 'transparent',
-  color: '#555',
-  border: '1px solid #ccc',
-  borderRadius: 4,
-  fontSize: '0.9rem',
-  cursor: 'pointer',
-};

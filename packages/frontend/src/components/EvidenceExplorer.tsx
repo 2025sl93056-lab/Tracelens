@@ -1,15 +1,5 @@
 import type { Signal, ChangeEvent } from '@tracelens/shared';
 
-const th: React.CSSProperties = {
-  textAlign: 'left',
-  padding: '6px 12px',
-  borderBottom: '2px solid #eee',
-  fontWeight: 600,
-  fontSize: '0.85rem',
-  color: '#555',
-};
-const td: React.CSSProperties = { padding: '8px 12px' };
-
 export function EvidenceExplorer({
   signals,
   changes,
@@ -19,32 +9,32 @@ export function EvidenceExplorer({
 }) {
   return (
     <div>
-      <h4 style={{ margin: '0 0 0.75rem' }}>Anomalous Signals</h4>
+      <div className="section-header" style={{ marginBottom: 'var(--space-3)' }}>
+        <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+          Anomalous Signals
+        </span>
+      </div>
+
       {signals.length === 0 ? (
-        <p style={{ color: '#888', margin: 0 }}>No signals recorded.</p>
+        <p style={{ color: 'var(--text-muted)', margin: '0 0 var(--space-6)' }}>No signals recorded.</p>
       ) : (
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+        <table className="evidence-table" style={{ marginBottom: 'var(--space-6)' }}>
           <thead>
             <tr>
-              <th style={th}>Metric</th>
-              <th style={{ ...th, textAlign: 'right' }}>Delta</th>
+              <th>Metric</th>
+              <th style={{ textAlign: 'right' }}>Delta</th>
             </tr>
           </thead>
           <tbody>
             {signals.map((s, i) => (
-              <tr key={i} style={{ borderBottom: '1px solid #f0f0f0' }}>
-                <td style={td}>{s.metric}</td>
-                <td
-                  style={{
-                    ...td,
-                    textAlign: 'right',
-                    fontWeight: 600,
-                    color: s.deltaPct > 0 ? '#f44336' : '#4caf50',
-                    fontFamily: 'monospace',
-                  }}
-                >
-                  {s.deltaPct > 0 ? '+' : ''}
-                  {s.deltaPct}%
+              <tr key={i}>
+                <td>
+                  <span className="metric-name">{s.metric}</span>
+                </td>
+                <td style={{ textAlign: 'right' }}>
+                  <span className={`delta ${s.deltaPct > 0 ? 'delta-up' : 'delta-down'}`}>
+                    {s.deltaPct > 0 ? '↑' : '↓'} {Math.abs(s.deltaPct)}%
+                  </span>
                 </td>
               </tr>
             ))}
@@ -52,36 +42,23 @@ export function EvidenceExplorer({
         </table>
       )}
 
-      <h4 style={{ margin: '1.5rem 0 0.75rem' }}>Recent Changes</h4>
+      <div className="section-header" style={{ marginBottom: 'var(--space-3)' }}>
+        <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+          Recent Changes
+        </span>
+      </div>
+
       {changes.length === 0 ? (
-        <p style={{ color: '#888', margin: 0 }}>No changes recorded.</p>
+        <p style={{ color: 'var(--text-muted)', margin: 0 }}>No changes recorded.</p>
       ) : (
-        <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+        <div>
           {changes.map((c, i) => (
-            <li
-              key={i}
-              style={{
-                padding: '8px 0',
-                borderBottom: '1px solid #f0f0f0',
-                display: 'flex',
-                gap: 16,
-              }}
-            >
-              <span
-                style={{
-                  color: '#888',
-                  fontFamily: 'monospace',
-                  fontSize: '0.82rem',
-                  whiteSpace: 'nowrap',
-                  paddingTop: 2,
-                }}
-              >
-                {new Date(c.at).toLocaleString()}
-              </span>
-              <span>{c.text}</span>
-            </li>
+            <div key={i} className="change-item">
+              <span className="change-time">{new Date(c.at).toLocaleString()}</span>
+              <span className="change-text">{c.text}</span>
+            </div>
           ))}
-        </ul>
+        </div>
       )}
     </div>
   );

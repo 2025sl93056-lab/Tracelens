@@ -3,48 +3,33 @@ import { ConfidenceBadge } from './ConfidenceBadge.js';
 
 export function WhatChanged({ candidates }: { candidates: RootCauseCandidate[] }) {
   if (candidates.length === 0) {
-    return <p style={{ color: '#888' }}>No correlation candidates found.</p>;
+    return (
+      <div className="empty-state" style={{ padding: 'var(--space-8)' }}>
+        <div className="empty-state-icon">🔍</div>
+        <div className="empty-state-title">No correlation candidates found</div>
+        <div className="empty-state-desc">No changes were correlated with this incident.</div>
+      </div>
+    );
   }
+
   return (
     <div>
-      <p
-        style={{
-          color: '#888',
-          fontStyle: 'italic',
-          margin: '0 0 1rem',
-          fontSize: '0.9rem',
-        }}
-      >
-        These are correlation candidates based on temporal and service proximity — not confirmed causes.
-      </p>
+      <div className="alert alert-info" style={{ marginBottom: 'var(--space-4)' }}>
+        <span>ℹ</span>
+        <span>
+          Correlation candidates based on temporal and service proximity —
+          not confirmed causes. Engineers make the final determination.
+        </span>
+      </div>
       {candidates.map((c, i) => (
-        <div
-          key={i}
-          style={{
-            border: '1px solid #e0e0e0',
-            borderRadius: 6,
-            padding: '1rem',
-            marginBottom: '0.75rem',
-            background: '#fafafa',
-          }}
-        >
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 12,
-              marginBottom: '0.6rem',
-              flexWrap: 'wrap',
-            }}
-          >
-            <strong style={{ fontFamily: 'monospace' }}>{c.component}</strong>
+        <div key={i} className="candidate-card" style={{ animationDelay: `${i * 0.06}s` }}>
+          <div className="candidate-header">
+            <span className="candidate-component">{c.component}</span>
             <ConfidenceBadge level={c.confidence} />
           </div>
-          <ul style={{ margin: 0, paddingLeft: '1.2rem' }}>
+          <ul className="candidate-reasons">
             {c.why.map((w, j) => (
-              <li key={j} style={{ color: '#444', marginBottom: 4 }}>
-                {w}
-              </li>
+              <li key={j} className="candidate-reason">{w}</li>
             ))}
           </ul>
         </div>

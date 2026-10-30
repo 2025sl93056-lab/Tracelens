@@ -2,21 +2,6 @@ import { useEffect, useState, type FormEvent } from 'react';
 import type { CreateUserResponse, UserRole } from '@tracelens/shared';
 import { api } from '../api/client.js';
 
-const th: React.CSSProperties = {
-  textAlign: 'left',
-  padding: '8px 14px',
-  borderBottom: '2px solid #eee',
-  fontWeight: 600,
-  fontSize: '0.85rem',
-  color: '#555',
-};
-const td: React.CSSProperties = { padding: '10px 14px' };
-
-const ROLE_COLOR: Record<UserRole, string> = {
-  admin: '#1a1a2e',
-  viewer: '#4a90e2',
-};
-
 export function ManageUsersPage() {
   const [users, setUsers] = useState<CreateUserResponse[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(true);
@@ -57,129 +42,169 @@ export function ManageUsersPage() {
   }
 
   return (
-    <div>
-      <h2 style={{ marginTop: 0 }}>User Management</h2>
-      <p style={{ color: '#888', marginTop: 0, marginBottom: '2rem', fontSize: '0.9rem' }}>
-        Only admins can access this page. Create accounts here — users cannot self-register.
-      </p>
+    <div style={{ animation: 'fadeIn 0.25s ease' }}>
+      <div className="page-header">
+        <div className="page-header-left">
+          <h1 className="page-title">User Management</h1>
+          <p className="page-subtitle">Admin-only · users cannot self-register</p>
+        </div>
+      </div>
 
-      <section style={{ marginBottom: '2.5rem' }}>
-        <h3 style={{ marginTop: 0 }}>Existing Users</h3>
-        {loadingUsers ? (
-          <p>Loading…</p>
-        ) : loadError ? (
-          <p style={{ color: '#f44336' }}>Error: {loadError}</p>
-        ) : (
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr>
-                <th style={th}>Username</th>
-                <th style={th}>Role</th>
-              </tr>
-            </thead>
-            <tbody>
-              {users.map((u) => (
-                <tr key={u.id} style={{ borderBottom: '1px solid #f0f0f0' }}>
-                  <td style={td}>{u.username}</td>
-                  <td style={td}>
-                    <span
-                      style={{
-                        background: ROLE_COLOR[u.role],
-                        color: '#fff',
-                        borderRadius: 4,
-                        padding: '2px 8px',
-                        fontSize: '0.75rem',
-                        fontWeight: 600,
-                        textTransform: 'uppercase',
-                      }}
-                    >
-                      {u.role}
-                    </span>
-                  </td>
-                </tr>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 400px', gap: 'var(--space-6)', alignItems: 'start' }}>
+        {/* Users table */}
+        <div className="card">
+          <div className="card-header">
+            <div className="section-header" style={{ margin: 0 }}>
+              <div className="section-icon">👥</div>
+              <div>
+                <div className="section-title">Existing Users</div>
+                <div className="section-note">{loadingUsers ? '…' : `${users.length} accounts`}</div>
+              </div>
+            </div>
+          </div>
+
+          {loadingUsers ? (
+            <div style={{ padding: 'var(--space-5)' }}>
+              {[1, 2, 3].map((i) => (
+                <div key={i} style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
+                  <div className="skeleton" style={{ width: 32, height: 32, borderRadius: '50%' }} />
+                  <div style={{ flex: 1 }}>
+                    <div className="skeleton skeleton-text" style={{ width: '50%' }} />
+                    <div className="skeleton skeleton-text" style={{ width: '30%' }} />
+                  </div>
+                </div>
               ))}
-            </tbody>
-          </table>
-        )}
-      </section>
+            </div>
+          ) : loadError ? (
+            <div style={{ padding: 'var(--space-5)' }}>
+              <div className="alert alert-error">⚠ {loadError}</div>
+            </div>
+          ) : (
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>User</th>
+                  <th>Role</th>
+                  <th>ID</th>
+                </tr>
+              </thead>
+              <tbody>
+                {users.map((u) => (
+                  <tr key={u.id} style={{ cursor: 'default' }}>
+                    <td>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <div
+                          style={{
+                            width: 32,
+                            height: 32,
+                            borderRadius: '50%',
+                            background: u.role === 'admin'
+                              ? 'linear-gradient(135deg, #6366f1, #8b5cf6)'
+                              : 'linear-gradient(135deg, #0ea5e9, #06b6d4)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '0.75rem',
+                            fontWeight: 700,
+                            color: '#fff',
+                            flexShrink: 0,
+                          }}
+                        >
+                          {u.username.slice(0, 2).toUpperCase()}
+                        </div>
+                        <span style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{u.username}</span>
+                      </div>
+                    </td>
+                    <td>
+                      <span className={`badge badge-${u.role}`}>{u.role}</span>
+                    </td>
+                    <td>
+                      <code
+                        style={{
+                          fontFamily: "'JetBrains Mono', monospace",
+                          fontSize: '0.78rem',
+                          color: 'var(--text-muted)',
+                        }}
+                      >
+                        {u.id}
+                      </code>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
 
-      <section
-        style={{
-          border: '1px solid #e0e0e0',
-          borderRadius: 8,
-          padding: '1.5rem',
-          maxWidth: 420,
-          background: '#fff',
-        }}
-      >
-        <h3 style={{ marginTop: 0 }}>Create New User</h3>
-        <form onSubmit={handleCreateUser} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <label style={labelStyle}>
-            Username
-            <input
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              style={inputStyle}
-              required
-              autoComplete="off"
-            />
-          </label>
-          <label style={labelStyle}>
-            Password
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              style={inputStyle}
-              required
-              autoComplete="new-password"
-            />
-          </label>
-          <label style={labelStyle}>
-            Role
-            <select
-              value={role}
-              onChange={(e) => setRole(e.target.value as UserRole)}
-              style={{ ...inputStyle, background: '#fff' }}
-            >
-              <option value="viewer">Viewer — read-only access</option>
-              <option value="admin">Admin — full access + user management</option>
-            </select>
-          </label>
-          {formError && (
-            <p style={{ color: '#f44336', margin: 0, fontSize: '0.9rem' }}>{formError}</p>
-          )}
-          {successMsg && (
-            <p style={{ color: '#4caf50', margin: 0, fontSize: '0.9rem' }}>{successMsg}</p>
-          )}
-          <button type="submit" disabled={submitting} style={btnStyle}>
-            {submitting ? 'Creating…' : 'Create User'}
-          </button>
-        </form>
-      </section>
+        {/* Create user form */}
+        <div className="card">
+          <div className="card-header">
+            <div className="section-header" style={{ margin: 0 }}>
+              <div className="section-icon">➕</div>
+              <div>
+                <div className="section-title">Create New User</div>
+              </div>
+            </div>
+          </div>
+          <div className="card-body">
+            <form onSubmit={handleCreateUser} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+              <div className="form-group">
+                <label className="form-label" htmlFor="new-username">Username</label>
+                <input
+                  id="new-username"
+                  className="form-input"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  required
+                  autoComplete="off"
+                  placeholder="new-user"
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label" htmlFor="new-password">Password</label>
+                <input
+                  id="new-password"
+                  type="password"
+                  className="form-input"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  autoComplete="new-password"
+                  placeholder="••••••••"
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label" htmlFor="new-role">Role</label>
+                <select
+                  id="new-role"
+                  className="form-select"
+                  value={role}
+                  onChange={(e) => setRole(e.target.value as UserRole)}
+                >
+                  <option value="viewer">Viewer — read-only access</option>
+                  <option value="admin">Admin — full access + user management</option>
+                </select>
+              </div>
+
+              {formError && <div className="alert alert-error">⚠ {formError}</div>}
+              {successMsg && <div className="alert alert-success">✓ {successMsg}</div>}
+
+              <button type="submit" disabled={submitting} className="btn btn-primary btn-full">
+                {submitting ? (
+                  <>
+                    <span className="spinner" style={{ width: 14, height: 14 }} />
+                    Creating…
+                  </>
+                ) : (
+                  '➕ Create User'
+                )}
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
-
-const labelStyle: React.CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 6,
-  fontWeight: 500,
-  fontSize: '0.9rem',
-};
-const inputStyle: React.CSSProperties = {
-  padding: '8px 12px',
-  border: '1px solid #ccc',
-  borderRadius: 4,
-  fontSize: '1rem',
-};
-const btnStyle: React.CSSProperties = {
-  padding: '10px',
-  background: '#1a1a2e',
-  color: '#fff',
-  border: 'none',
-  borderRadius: 4,
-  fontSize: '1rem',
-  cursor: 'pointer',
-};

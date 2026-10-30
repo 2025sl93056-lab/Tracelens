@@ -7,11 +7,23 @@ import { Timeline } from '../components/Timeline.js';
 import { EvidenceExplorer } from '../components/EvidenceExplorer.js';
 import { WhatChanged } from '../components/WhatChanged.js';
 
-const section: React.CSSProperties = {
-  marginBottom: '2rem',
-  paddingBottom: '1.5rem',
-  borderBottom: '1px solid #eee',
-};
+function DetailSkeleton() {
+  return (
+    <div>
+      <div className="skeleton" style={{ width: 100, height: 14, marginBottom: 24 }} />
+      <div className="skeleton skeleton-title" />
+      <div className="skeleton" style={{ width: '45%', height: 14, marginBottom: 32 }} />
+      {[1, 2, 3].map((i) => (
+        <div key={i} style={{ marginBottom: 32 }}>
+          <div className="skeleton skeleton-title" style={{ width: '30%' }} />
+          <div className="skeleton skeleton-text" />
+          <div className="skeleton skeleton-text" style={{ width: '80%' }} />
+          <div className="skeleton skeleton-text" style={{ width: '60%' }} />
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export function IncidentDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -29,56 +41,124 @@ export function IncidentDetailPage() {
       .finally(() => setLoading(false));
   }, [id]);
 
-  if (loading) return <p>Loading…</p>;
-  if (error) return <p style={{ color: '#f44336' }}>Error: {error}</p>;
-  if (!incident) return <p>Incident not found.</p>;
+  if (loading) return <DetailSkeleton />;
+  if (error) return <div className="alert alert-error" style={{ marginTop: 24 }}>⚠ {error}</div>;
+  if (!incident) return (
+    <div className="empty-state">
+      <div className="empty-state-icon">🔍</div>
+      <div className="empty-state-title">Incident not found</div>
+    </div>
+  );
 
   return (
-    <div>
+    <div style={{ animation: 'fadeIn 0.25s ease' }}>
+      {/* Back */}
       <button
         onClick={() => navigate('/incidents')}
-        style={{
-          background: 'none',
-          border: 'none',
-          color: '#4a90e2',
-          cursor: 'pointer',
-          padding: 0,
-          marginBottom: '1.25rem',
-          fontSize: '0.9rem',
-        }}
+        className="btn btn-ghost btn-sm"
+        style={{ marginBottom: 'var(--space-5)', paddingLeft: 0 }}
       >
         ← Back to Incidents
       </button>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: '0.75rem' }}>
-        <h2 style={{ margin: 0 }}>{incident.id}</h2>
-        <SeverityBadge severity={incident.severity} />
-      </div>
-      <p style={{ color: '#555', marginTop: 0, marginBottom: '2rem' }}>
-        <strong>Started:</strong> {new Date(incident.startedAt).toLocaleString()}
-        &nbsp;&nbsp;·&nbsp;&nbsp;
-        <strong>Affected:</strong> {incident.affectedServices.join(', ')}
-      </p>
-
-      <section style={section}>
-        <h3 style={{ marginTop: 0 }}>Timeline</h3>
-        <Timeline entries={incident.timeline} />
-      </section>
-
-      <section style={section}>
-        <h3 style={{ marginTop: 0 }}>Evidence</h3>
-        <EvidenceExplorer signals={incident.signals} changes={incident.changes} />
-      </section>
-
-      <section style={section}>
-        <h3 style={{ marginTop: 0 }}>
-          What Changed?{' '}
-          <span style={{ fontSize: '0.82rem', fontWeight: 400, color: '#888' }}>
-            correlation evidence — not confirmed causes
+      {/* Header */}
+      <div
+        className="card"
+        style={{ marginBottom: 'var(--space-6)', padding: 'var(--space-6)' }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', marginBottom: 'var(--space-3)' }}>
+          <h2 style={{ margin: 0, fontSize: '1.5rem' }}>{incident.id}</h2>
+          <SeverityBadge severity={incident.severity} />
+        </div>
+        <div
+          style={{
+            display: 'flex',
+            gap: 'var(--space-6)',
+            flexWrap: 'wrap',
+            color: 'var(--text-muted)',
+            fontSize: '0.875rem',
+          }}
+        >
+          <span>
+            <strong style={{ color: 'var(--text-secondary)' }}>Started</strong>&nbsp;
+            {new Date(incident.startedAt).toLocaleString()}
           </span>
-        </h3>
-        <WhatChanged candidates={incident.candidates} />
-      </section>
+          <span>
+            <strong style={{ color: 'var(--text-secondary)' }}>Affected</strong>&nbsp;
+            {incident.affectedServices.map((s) => (
+              <code
+                key={s}
+                style={{
+                  background: 'var(--surface-overlay)',
+                  border: '1px solid var(--border-default)',
+                  borderRadius: 'var(--radius-sm)',
+                  padding: '1px 7px',
+                  fontSize: '0.8rem',
+                  marginRight: 4,
+                  fontFamily: "'JetBrains Mono', monospace",
+                  color: 'var(--text-brand)',
+                }}
+              >
+                {s}
+              </code>
+            ))}
+          </span>
+          <span>
+            <strong style={{ color: 'var(--text-secondary)' }}>Candidates</strong>&nbsp;
+            {incident.candidates.length}
+          </span>
+        </div>
+      </div>
+
+      {/* Timeline */}
+      <div className="card section" style={{ marginBottom: 'var(--space-5)' }}>
+        <div className="card-header">
+          <div className="section-header" style={{ margin: 0 }}>
+            <div className="section-icon">⏱</div>
+            <div>
+              <div className="section-title">Timeline</div>
+              <div className="section-note">{incident.timeline.length} events</div>
+            </div>
+          </div>
+        </div>
+        <div className="card-body">
+          <Timeline entries={incident.timeline} />
+        </div>
+      </div>
+
+      {/* Evidence */}
+      <div className="card section" style={{ marginBottom: 'var(--space-5)' }}>
+        <div className="card-header">
+          <div className="section-header" style={{ margin: 0 }}>
+            <div className="section-icon">📊</div>
+            <div>
+              <div className="section-title">Evidence</div>
+              <div className="section-note">
+                {incident.signals.length} signals · {incident.changes.length} changes
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="card-body">
+          <EvidenceExplorer signals={incident.signals} changes={incident.changes} />
+        </div>
+      </div>
+
+      {/* What Changed */}
+      <div className="card section">
+        <div className="card-header">
+          <div className="section-header" style={{ margin: 0 }}>
+            <div className="section-icon">🔍</div>
+            <div>
+              <div className="section-title">What Changed?</div>
+              <div className="section-note">correlation candidates — not confirmed causes</div>
+            </div>
+          </div>
+        </div>
+        <div className="card-body">
+          <WhatChanged candidates={incident.candidates} />
+        </div>
+      </div>
     </div>
   );
 }
