@@ -81,9 +81,7 @@ export function IncidentDetailPage() {
     </div>
   );
 
-  const duration = incident.resolvedAt
-    ? Math.round((new Date(incident.resolvedAt).getTime() - new Date(incident.startedAt).getTime()) / 60000)
-    : null;
+  const duration = null;
 
   return (
     <div style={{ animation: 'fadeIn 0.25s ease' }}>
@@ -144,18 +142,6 @@ export function IncidentDetailPage() {
             {incident.id}
           </h2>
           <SeverityBadge severity={incident.severity} />
-          {incident.resolvedAt && (
-            <span
-              className="badge"
-              style={{
-                background: 'var(--low-bg)',
-                color: 'var(--low-light)',
-                borderColor: 'var(--low-border)',
-              }}
-            >
-              ✓ Resolved
-            </span>
-          )}
         </div>
 
         {/* Meta row */}
