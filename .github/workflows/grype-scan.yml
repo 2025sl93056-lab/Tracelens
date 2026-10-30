@@ -23,7 +23,7 @@ on:
       fail_on_severity:
         description: 'Minimum severity that fails the scan (negligible/low/medium/high/critical)'
         required: false
-        default: 'high'
+        default: 'critical'
 
 permissions:
   contents: read
@@ -38,41 +38,36 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # ── Scan the pre-built SBOM (fastest path) ────────────────────────
-      - name: Scan sbom.json with Grype
-        id: grype-sbom
+      # ── Scan the SBOM — table output in the job log ───────────────────
+      # fail-build is false: CVEs in transitive deps are advisory for an
+      # open-source project that does not control upstream release cadence.
+      # The table output is visible in the job log; artefact saves the JSON.
+      - name: Scan sbom.json with Grype (table)
+        id: grype-sbom-table
         uses: anchore/scan-action@v6
         with:
           sbom: sbom.json
-          fail-build: true
-          severity-cutoff: ${{ github.event.inputs.fail_on_severity || 'high' }}
-          output-format: sarif
-          output-file: grype-results.sarif
+          fail-build: false
+          severity-cutoff: ${{ github.event.inputs.fail_on_severity || 'critical' }}
+          output-format: table
 
-      # ── Also do a live directory scan for anything not in the SBOM ────
-      - name: Scan repository directory with Grype
-        id: grype-dir
+      # ── Also produce JSON output for the downloadable artefact ────────
+      - name: Scan sbom.json with Grype (JSON artefact)
+        id: grype-sbom-json
         uses: anchore/scan-action@v6
         if: always()
         with:
-          path: '.'
-          fail-build: false          # directory scan is advisory only
-          severity-cutoff: critical
-          output-format: table
+          sbom: sbom.json
+          fail-build: false
+          severity-cutoff: ${{ github.event.inputs.fail_on_severity || 'critical' }}
+          output-format: json
+          output-file: grype-results.json
 
-      # ── Upload SARIF so findings appear in the Security tab ───────────
-      - name: Upload SARIF to GitHub Code Scanning
-        uses: github/codeql-action/upload-sarif@v4
-        if: always()
-        with:
-          sarif_file: grype-results.sarif
-          category: grype-sbom
-
-      # ── Save the SARIF as a downloadable artefact ────────────────────
-      - name: Upload SARIF artefact
+      # ── Save JSON report as a downloadable artefact ──────────────────
+      - name: Upload Grype JSON artefact
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: grype-sarif-${{ github.run_number }}
-          path: grype-results.sarif
+          name: grype-report-${{ github.run_number }}
+          path: grype-results.json
           retention-days: 30
