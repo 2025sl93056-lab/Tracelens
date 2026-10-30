@@ -1,11 +1,9 @@
 # TraceLens full-stack dev environment.
 #
-# Status: the database is wired and runs out of the box. The application
-# services below are provided as a template and are commented out until each
-# package ships its Dockerfile + start script (tracked as tasks for the
-# package owners — see docs/ROADMAP.md and the team roles doc).
+# Status: Postgres, Adminer, and the ingestion + api services run out of the
+# box. The frontend service remains a template below until it ships a Dockerfile.
 #
-#   docker compose up            # starts Postgres + Adminer now
+#   docker compose up --build    # starts Postgres + Adminer + ingestion + api
 #
 services:
   postgres:
@@ -38,7 +36,9 @@ services:
   # --- Application services (uncomment as each package gains a Dockerfile) ---
   #
   ingestion:
-    build: ./packages/ingestion
+    build:
+      context: .
+      dockerfile: packages/ingestion/Dockerfile
     environment:
       INGESTION_PORT: ${INGESTION_PORT:-4001}
       INGESTION_API_KEY: ${INGESTION_API_KEY:-dev-ingest-key}
@@ -50,15 +50,17 @@ services:
     depends_on:
       postgres: { condition: service_healthy }
   #
-  # api:
-  #   build: ./packages/api
-  #   environment:
-  #     API_PORT: ${API_PORT:-4000}
-  #     JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
-  #     POSTGRES_HOST: postgres
-  #   ports: ['${API_PORT:-4000}:4000']
-  #   depends_on:
-  #     postgres: { condition: service_healthy }
+  api:
+    build:
+      context: .
+      dockerfile: packages/api/Dockerfile
+    environment:
+      API_PORT: ${API_PORT:-4000}
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
+      POSTGRES_HOST: postgres
+    ports: ['${API_PORT:-4000}:4000']
+    depends_on:
+      postgres: { condition: service_healthy }
   #
   # frontend:
   #   build: ./packages/frontend
