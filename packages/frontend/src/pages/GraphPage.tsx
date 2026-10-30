@@ -42,40 +42,115 @@ export function GraphPage() {
           </div>
         </div>
         <div className="card">
-          <div className="skeleton" style={{ height: 480, borderRadius: 'var(--radius-lg)', margin: '1px' }} />
+          <div
+            className="skeleton"
+            style={{ height: 500, borderRadius: 'var(--radius-lg)', margin: 1 }}
+          />
         </div>
       </div>
     );
   }
 
-  if (error) return <div className="alert alert-error" style={{ marginTop: 24 }}>⚠ {error}</div>;
-  if (!graph) return <div className="empty-state"><div className="empty-state-icon">🕸️</div><div className="empty-state-title">No graph data available</div></div>;
+  if (error) {
+    return <div className="alert alert-error" style={{ marginTop: 24 }}>⚠ {error}</div>;
+  }
+
+  if (!graph) {
+    return (
+      <div className="empty-state">
+        <span className="empty-state-icon">🕸️</span>
+        <div className="empty-state-title">No graph data available</div>
+      </div>
+    );
+  }
+
+  const nodeKindCounts = graph.nodes.reduce<Record<string, number>>((acc, n) => {
+    acc[n.kind] = (acc[n.kind] ?? 0) + 1;
+    return acc;
+  }, {});
 
   return (
     <div style={{ animation: 'fadeIn 0.25s ease' }}>
+      {/* Header */}
       <div className="page-header">
         <div className="page-header-left">
           <h1 className="page-title">Service Graph</h1>
           <p className="page-subtitle">
             {graph.nodes.length} nodes · {graph.edges.length} edges
+            {impact ? ` · ${impact.affected.length} impacted by ${selectedNode}` : ''}
           </p>
         </div>
       </div>
 
+      {/* Legend + stats row */}
+      <div
+        style={{
+          display: 'flex',
+          gap: 'var(--sp-3)',
+          marginBottom: 'var(--sp-5)',
+          flexWrap: 'wrap',
+        }}
+      >
+        {Object.entries(nodeKindCounts).map(([kind, count]) => (
+          <div
+            key={kind}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '6px 14px',
+              background: 'var(--surface-card)',
+              border: '1px solid var(--border-subtle)',
+              borderRadius: 'var(--radius-full)',
+              fontSize: '0.78rem',
+              color: 'var(--text-secondary)',
+              fontWeight: 500,
+            }}
+          >
+            <span
+              style={{
+                width: 8,
+                height: 8,
+                borderRadius: '50%',
+                background:
+                  kind === 'service' ? '#3b82f6' :
+                  kind === 'database' ? '#8b5cf6' :
+                  kind === 'api' ? '#22c55e' :
+                  kind === 'deployment' ? '#f97316' :
+                  kind === 'incident' ? '#ef4444' :
+                  '#f97316',
+                flexShrink: 0,
+              }}
+            />
+            {count} {kind}{count !== 1 ? 's' : ''}
+          </div>
+        ))}
+      </div>
+
       {/* Graph canvas */}
-      <div className="card" style={{ marginBottom: 'var(--space-5)' }}>
+      <div className="card" style={{ marginBottom: 'var(--sp-5)' }}>
         <div className="card-header">
           <div className="section-header" style={{ margin: 0 }}>
             <div className="section-icon">🕸️</div>
             <div>
               <div className="section-title">Dependency Map</div>
               <div className="section-note">
-                {impact ? `${impact.affected.length} nodes affected by ${selectedNode}` : 'Select a node for impact analysis'}
+                {impact
+                  ? `${impact.affected.length} nodes affected downstream from ${selectedNode}`
+                  : 'Scroll to zoom · drag to pan · click a node to explore'}
               </div>
             </div>
           </div>
+          {impact && (
+            <button
+              className="btn btn-ghost btn-sm"
+              onClick={() => { setImpact(null); setSelectedNode(''); }}
+            >
+              ✕ Clear
+            </button>
+          )}
         </div>
-        <div style={{ padding: 'var(--space-4)' }}>
+        <div style={{ padding: 'var(--sp-3)' }}>
           <DepGraph graph={graph} highlighted={impact?.affected ?? []} />
         </div>
       </div>
@@ -87,7 +162,7 @@ export function GraphPage() {
             <div className="section-icon">💥</div>
             <div>
               <div className="section-title">Impact Analysis</div>
-              <div className="section-note">Simulate a node failure and see downstream effects</div>
+              <div className="section-note">Simulate a node failure and trace downstream effects</div>
             </div>
           </div>
         </div>
@@ -95,18 +170,21 @@ export function GraphPage() {
           <div
             style={{
               display: 'flex',
-              gap: 'var(--space-3)',
+              gap: 'var(--sp-3)',
               alignItems: 'flex-end',
               flexWrap: 'wrap',
-              marginBottom: impact ? 'var(--space-4)' : 0,
+              marginBottom: impact ? 'var(--sp-4)' : 0,
             }}
           >
-            <div className="form-group" style={{ flex: 1, minWidth: 200 }}>
-              <label className="form-label">Simulate failure at</label>
+            <div className="form-group" style={{ flex: 1, minWidth: 220 }}>
+              <label className="form-label">Simulate failure at node</label>
               <select
                 className="form-select"
                 value={selectedNode}
-                onChange={(e) => { setSelectedNode(e.target.value); setImpact(null); }}
+                onChange={(e) => {
+                  setSelectedNode(e.target.value);
+                  setImpact(null);
+                }}
               >
                 <option value="">— select a node —</option>
                 {graph.nodes.map((n) => (
@@ -120,7 +198,7 @@ export function GraphPage() {
               onClick={runImpact}
               disabled={!selectedNode || impactLoading}
               className="btn btn-primary"
-              style={{ height: 42 }}
+              style={{ height: 42, minWidth: 160 }}
             >
               {impactLoading ? (
                 <>
@@ -134,11 +212,11 @@ export function GraphPage() {
           </div>
 
           {impact && (
-            <div className="impact-result" style={{ animation: 'fadeIn 0.2s ease' }}>
+            <div className="impact-result">
               <div className="impact-label">
                 {impact.affected.length === 0
                   ? '✓ No downstream impact'
-                  : `⚡ ${impact.affected.length} nodes affected`}
+                  : `⚡ ${impact.affected.length} node${impact.affected.length > 1 ? 's' : ''} affected`}
               </div>
               {impact.affected.length > 0 && (
                 <div className="impact-chips">
