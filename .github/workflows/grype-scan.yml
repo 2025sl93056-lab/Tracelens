@@ -1,0 +1,78 @@
+name: Grype Vulnerability Scan
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'sbom.json'
+      - 'package-lock.json'
+      - 'packages/**/package.json'
+      - '.github/workflows/grype-scan.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'sbom.json'
+      - 'package-lock.json'
+      - 'packages/**/package.json'
+      - '.github/workflows/grype-scan.yml'
+  schedule:
+    # Run every Sunday at midnight UTC to catch newly published CVEs
+    - cron: '0 0 * * 0'
+  workflow_dispatch:
+    inputs:
+      fail_on_severity:
+        description: 'Minimum severity that fails the scan (negligible/low/medium/high/critical)'
+        required: false
+        default: 'high'
+
+permissions:
+  contents: read
+  security-events: write  # required to upload SARIF to GitHub Code Scanning
+
+jobs:
+  grype-scan:
+    name: Scan dependencies for CVEs
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ── Scan the pre-built SBOM (fastest path) ────────────────────────
+      - name: Scan sbom.json with Grype
+        id: grype-sbom
+        uses: anchore/scan-action@v6
+        with:
+          sbom: sbom.json
+          fail-build: true
+          severity-cutoff: ${{ github.event.inputs.fail_on_severity || 'high' }}
+          output-format: sarif
+          output-file: grype-results.sarif
+
+      # ── Also do a live directory scan for anything not in the SBOM ────
+      - name: Scan repository directory with Grype
+        id: grype-dir
+        uses: anchore/scan-action@v6
+        if: always()
+        with:
+          path: '.'
+          fail-build: false          # directory scan is advisory only
+          severity-cutoff: critical
+          output-format: table
+
+      # ── Upload SARIF so findings appear in the Security tab ───────────
+      - name: Upload SARIF to GitHub Code Scanning
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: grype-results.sarif
+          category: grype-sbom
+
+      # ── Save the SARIF as a downloadable artefact ────────────────────
+      - name: Upload SARIF artefact
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: grype-sarif-${{ github.run_number }}
+          path: grype-results.sarif
+          retention-days: 30
