@@ -11,7 +11,7 @@
  *  - [x] GET /incidents, GET /incidents/:id (from correlation output).
  *  - [x] GET /services, GET /graph, GET /graph/impact (from graph service).
  *  - [x] Wire PostgreSQL data layer (shared with ingestion).
- *  - [ ] Dockerfile + health endpoint.
+ *  - [x] Dockerfile + health endpoint.
  *
  * `healthStatus` and `roleSatisfies` are the original tested starting points;
  * the app, auth, data layer, and seed live in sibling modules re-exported below.
