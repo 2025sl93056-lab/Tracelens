@@ -1,26 +1,17 @@
 import type { ConfidenceLevel } from '@tracelens/shared';
 
-const COLORS: Record<ConfidenceLevel, string> = {
-  low: '#9e9e9e',
-  medium: '#ff9800',
-  high: '#f44336',
+const CONF_CONFIG: Record<ConfidenceLevel, { icon: string; label: string }> = {
+  high:   { icon: '▲', label: 'High Confidence' },
+  medium: { icon: '◆', label: 'Medium Confidence' },
+  low:    { icon: '▽', label: 'Low Confidence' },
 };
 
 export function ConfidenceBadge({ level }: { level: ConfidenceLevel }) {
+  const cfg = CONF_CONFIG[level];
   return (
-    <span
-      style={{
-        background: COLORS[level],
-        color: '#fff',
-        borderRadius: 4,
-        padding: '2px 8px',
-        fontSize: '0.75rem',
-        fontWeight: 600,
-        textTransform: 'uppercase',
-        letterSpacing: '0.05em',
-      }}
-    >
-      {level} confidence
+    <span className={`badge badge-conf-${level}`} style={{ fontSize: '0.68rem' }}>
+      <span style={{ fontSize: 8 }}>{cfg.icon}</span>
+      {cfg.label}
     </span>
   );
 }
