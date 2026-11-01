@@ -99,6 +99,10 @@ export function createApp(deps: AppDeps): Express {
       res.status(400).json({ error: 'query parameter "node" is required' });
       return;
     }
+    if (!store.getGraph().nodes.some((n) => n.id === node)) {
+      res.status(404).json({ error: `node ${node} not found in the graph` });
+      return;
+    }
     res.json(store.getImpact(node));
   });
 

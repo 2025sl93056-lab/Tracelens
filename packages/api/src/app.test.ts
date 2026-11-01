@@ -196,4 +196,20 @@ describe('data routes', () => {
     });
     expect(res.status).toBe(400);
   });
+
+  it('GET /graph/impact returns 404 for a node not in the graph', async () => {
+    const res = await fetch(`${base}/graph/impact?node=ghost`, {
+      headers: auth_header(await token('viewer', 'viewer-pw')),
+    });
+    expect(res.status).toBe(404);
+  });
+
+  it('GET /graph/impact returns 200 with empty affected for a leaf node', async () => {
+    const res = await fetch(`${base}/graph/impact?node=db-sim`, {
+      headers: auth_header(await token('viewer', 'viewer-pw')),
+    });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { node: string; affected: string[] };
+    expect(body).toEqual({ node: 'db-sim', affected: [] });
+  });
 });
