@@ -13,7 +13,7 @@
  *   - `POST /graph/rebuild`  requires the `admin` role (maintenance)
  */
 import express, { type Express, type NextFunction, type Request, type Response } from 'express';
-import { API_ROUTES, type LoginResponse } from '@tracelens/shared';
+import { API_ROUTES, type ImpactDirection, type LoginResponse } from '@tracelens/shared';
 import { healthStatus, type HealthStatus } from './index.js';
 import {
   authenticate,
@@ -99,11 +99,22 @@ export function createApp(deps: AppDeps): Express {
       res.status(400).json({ error: 'query parameter "node" is required' });
       return;
     }
+    const directionParam = req.query.direction;
+    let direction: ImpactDirection = 'downstream';
+    if (directionParam !== undefined) {
+      if (directionParam !== 'downstream' && directionParam !== 'upstream') {
+        res
+          .status(400)
+          .json({ error: 'query parameter "direction" must be "downstream" or "upstream"' });
+        return;
+      }
+      direction = directionParam;
+    }
     if (!store.getGraph().nodes.some((n) => n.id === node)) {
       res.status(404).json({ error: `node ${node} not found in the graph` });
       return;
     }
-    res.json(store.getImpact(node));
+    res.json(store.getImpact(node, direction));
   });
 
   // --- Graph maintenance (admin) -------------------------------------------

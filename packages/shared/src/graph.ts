@@ -38,10 +38,22 @@ export interface DependencyGraph {
   edges: GraphEdge[];
 }
 
+/**
+ * Direction an impact traversal follows over the dependency graph.
+ *
+ * - `downstream` — nodes the start node reaches by following edges
+ *   (its dependencies: "what does this node rely on?").
+ * - `upstream` — nodes that reach the start node by following edges in reverse
+ *   (its dependents/callers: "who is affected if this node degrades?").
+ */
+export type ImpactDirection = 'downstream' | 'upstream';
+
 /** Result of impact analysis: components reachable/affected from a node. */
 export interface ImpactResult {
   /** The node impact was computed from. */
   node: string;
-  /** Downstream/affected node ids. */
+  /** Direction the traversal followed. Defaults to `downstream`. */
+  direction?: ImpactDirection;
+  /** Affected node ids (dependencies when downstream, dependents when upstream). */
   affected: string[];
 }

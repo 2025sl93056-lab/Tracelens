@@ -118,18 +118,32 @@ Returns the `service` nodes of the dependency graph (`GraphNode[]`).
 Returns the `DependencyGraph` (`{ nodes, edges }`), derived from trace spans
 (parent span → child span = `CALLS`).
 
-### `GET /graph/impact?node=<id>` — _viewer_
+### `GET /graph/impact?node=<id>&direction=<downstream|upstream>` — _viewer_
 
-Downstream impact from a node (BFS, cycle-safe). Returns `ImpactResult`:
+Impact analysis from a node (BFS, cycle-safe). Returns `ImpactResult`.
 
-```json
-{ "node": "order", "affected": ["payment", "inventory", "db-sim"] }
+The optional `direction` selects which way the graph is traversed (default
+`downstream`):
+
+- **`downstream`** — what the node depends on (follows `CALLS` edges forward):
+  _"what does this node rely on?"_
+- **`upstream`** — the node's dependents/callers (follows edges in reverse):
+  _"who is affected if this node degrades?"_ — the blast-radius view an incident
+  investigation usually wants.
+
+```jsonc
+// GET /graph/impact?node=order           (downstream, default)
+{ "node": "order", "direction": "downstream", "affected": ["payment", "inventory", "db-sim"] }
+
+// GET /graph/impact?node=payment&direction=upstream
+{ "node": "payment", "direction": "upstream", "affected": ["gateway", "order"] }
 ```
 
-| Status | Meaning                    |
-| ------ | -------------------------- |
-| `200`  | `ImpactResult`             |
-| `400`  | `node` query param missing |
+| Status | Meaning                                          |
+| ------ | ------------------------------------------------ |
+| `200`  | `ImpactResult`                                   |
+| `400`  | `node` missing, or `direction` not a valid value |
+| `404`  | `node` is not present in the graph               |
 
 ### `POST /graph/rebuild` — _admin_
 
