@@ -1,15 +1,5 @@
 import type { Signal, ChangeEvent } from '@tracelens/shared';
 
-const th: React.CSSProperties = {
-  textAlign: 'left',
-  padding: '6px 12px',
-  borderBottom: '2px solid #eee',
-  fontWeight: 600,
-  fontSize: '0.85rem',
-  color: '#555',
-};
-const td: React.CSSProperties = { padding: '8px 12px' };
-
 export function EvidenceExplorer({
   signals,
   changes,
@@ -19,70 +9,135 @@ export function EvidenceExplorer({
 }) {
   return (
     <div>
-      <h4 style={{ margin: '0 0 0.75rem' }}>Anomalous Signals</h4>
-      {signals.length === 0 ? (
-        <p style={{ color: '#888', margin: 0 }}>No signals recorded.</p>
-      ) : (
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr>
-              <th style={th}>Metric</th>
-              <th style={{ ...th, textAlign: 'right' }}>Delta</th>
-            </tr>
-          </thead>
-          <tbody>
-            {signals.map((s, i) => (
-              <tr key={i} style={{ borderBottom: '1px solid #f0f0f0' }}>
-                <td style={td}>{s.metric}</td>
-                <td
+      {/* Signals */}
+      <div style={{ marginBottom: 'var(--sp-6)' }}>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            marginBottom: 'var(--sp-3)',
+          }}
+        >
+          <span
+            style={{
+              fontSize: '0.68rem',
+              fontWeight: 700,
+              color: 'var(--text-muted)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.1em',
+            }}
+          >
+            Anomalous Signals
+          </span>
+          {signals.length > 0 && (
+            <span className="count-pill">{signals.length}</span>
+          )}
+        </div>
+
+        {signals.length === 0 ? (
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>
+            No signals recorded.
+          </p>
+        ) : (
+          <table className="evidence-table">
+            <thead>
+              <tr>
+                <th>Metric</th>
+                <th style={{ textAlign: 'right' }}>Change</th>
+              </tr>
+            </thead>
+            <tbody>
+              {signals.map((s, i) => (
+                <tr
+                  key={i}
                   style={{
-                    ...td,
-                    textAlign: 'right',
-                    fontWeight: 600,
-                    color: s.deltaPct > 0 ? '#f44336' : '#4caf50',
-                    fontFamily: 'monospace',
+                    animation: 'fadeIn 0.2s ease both',
+                    animationDelay: `${i * 0.04}s`,
                   }}
                 >
-                  {s.deltaPct > 0 ? '+' : ''}
-                  {s.deltaPct}%
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
+                  <td>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <span
+                        style={{
+                          width: 6,
+                          height: 6,
+                          borderRadius: '50%',
+                          background: s.deltaPct > 50 ? 'var(--critical)' : s.deltaPct > 20 ? 'var(--high)' : 'var(--medium)',
+                          flexShrink: 0,
+                          boxShadow: s.deltaPct > 50 ? '0 0 6px var(--critical)' : 'none',
+                        }}
+                      />
+                      <span className="metric-name">{s.metric}</span>
+                    </div>
+                  </td>
+                  <td style={{ textAlign: 'right' }}>
+                    <span className={`delta ${s.deltaPct > 0 ? 'delta-up' : 'delta-down'}`}>
+                      {s.deltaPct > 0 ? '↑' : '↓'} {Math.abs(s.deltaPct)}%
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
 
-      <h4 style={{ margin: '1.5rem 0 0.75rem' }}>Recent Changes</h4>
-      {changes.length === 0 ? (
-        <p style={{ color: '#888', margin: 0 }}>No changes recorded.</p>
-      ) : (
-        <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-          {changes.map((c, i) => (
-            <li
-              key={i}
-              style={{
-                padding: '8px 0',
-                borderBottom: '1px solid #f0f0f0',
-                display: 'flex',
-                gap: 16,
-              }}
-            >
-              <span
+      {/* Changes */}
+      <div>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            marginBottom: 'var(--sp-3)',
+          }}
+        >
+          <span
+            style={{
+              fontSize: '0.68rem',
+              fontWeight: 700,
+              color: 'var(--text-muted)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.1em',
+            }}
+          >
+            Recent Changes
+          </span>
+          {changes.length > 0 && (
+            <span className="count-pill">{changes.length}</span>
+          )}
+        </div>
+
+        {changes.length === 0 ? (
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>
+            No changes recorded.
+          </p>
+        ) : (
+          <div>
+            {changes.map((c, i) => (
+              <div
+                key={i}
+                className="change-item"
                 style={{
-                  color: '#888',
-                  fontFamily: 'monospace',
-                  fontSize: '0.82rem',
-                  whiteSpace: 'nowrap',
-                  paddingTop: 2,
+                  animation: 'fadeIn 0.2s ease both',
+                  animationDelay: `${i * 0.05}s`,
                 }}
               >
-                {new Date(c.at).toLocaleString()}
-              </span>
-              <span>{c.text}</span>
-            </li>
-          ))}
-        </ul>
-      )}
+                <span className="change-time">
+                  {new Date(c.at).toLocaleString(undefined, {
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })}
+                </span>
+                <span className="change-text">{c.text}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

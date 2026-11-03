@@ -1,27 +1,25 @@
 import type { Severity } from '@tracelens/shared';
 import { severityLabel } from '../format.js';
 
-const COLORS: Record<Severity, string> = {
-  low: '#4caf50',
-  medium: '#ff9800',
-  high: '#f44336',
-  critical: '#9c27b0',
+const SEVERITY_CONFIG: Record<Severity, { dot: string; pulse?: boolean }> = {
+  critical: { dot: '●', pulse: true },
+  high:     { dot: '●' },
+  medium:   { dot: '●' },
+  low:      { dot: '●' },
 };
 
 export function SeverityBadge({ severity }: { severity: Severity }) {
+  const cfg = SEVERITY_CONFIG[severity];
   return (
-    <span
-      style={{
-        background: COLORS[severity],
-        color: '#fff',
-        borderRadius: 4,
-        padding: '2px 8px',
-        fontSize: '0.75rem',
-        fontWeight: 600,
-        textTransform: 'uppercase',
-        letterSpacing: '0.05em',
-      }}
-    >
+    <span className={`badge badge-${severity}`}>
+      <span
+        style={{
+          fontSize: 7,
+          animation: cfg.pulse ? 'dotBlink 1.5s ease-in-out infinite' : undefined,
+        }}
+      >
+        {cfg.dot}
+      </span>
       {severityLabel(severity)}
     </span>
   );
