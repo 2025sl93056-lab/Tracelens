@@ -9,9 +9,16 @@ import type {
   CreateUserResponse,
 } from '@tracelens/shared';
 import { API_ROUTES } from '@tracelens/shared';
-import { MOCK_INCIDENTS, MOCK_INCIDENT_DETAIL, MOCK_GRAPH, MOCK_IMPACT, MOCK_USERS, addMockUser } from './mock.js';
+import {
+  MOCK_INCIDENTS,
+  MOCK_INCIDENT_DETAIL,
+  MOCK_GRAPH,
+  MOCK_IMPACT,
+  MOCK_USERS,
+  addMockUser,
+} from './mock.js';
 
-const BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:4000';
+const BASE = import.meta.env.VITE_API_BASE_URL || '/api';
 
 let _token: string | null = null;
 let _mock = false;

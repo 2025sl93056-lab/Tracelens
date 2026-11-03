@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+
+- Frontend production Docker image and active Compose dashboard, with same-origin API routing and configurable loopback dashboard port.
 - Monorepo scaffolding (npm workspaces, TypeScript, Vitest, ESLint, Prettier).
 - Shared contracts package (`@tracelens/shared`) with telemetry, incident, graph, and API types.
 - Service graph derivation from trace spans (`deriveGraphFromSpans`, parent span → child span = `CALLS`).
@@ -20,5 +22,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Open-source project files: Apache-2.0 license, README, CONTRIBUTING, Code of Conduct, issue/PR templates.
 - **ingestion**: HTTP API (`POST /telemetry`, `POST /telemetry/batch`, `GET /health`) with API-key auth, validation, and PostgreSQL persistence (resolves #1).
 - **ingestion**: Dockerfile for containerised deployment; ingestion service wired into `docker-compose.yml`.
+
+### Fixed
+
+- Ingestion Docker builds install the root TypeScript compiler and remove development dependencies before the runtime stage.
+- Ingestion starts without an asynchronous entry-module import cycle and is covered by a compiled-entry-point PostgreSQL regression test.
 
 [Unreleased]: https://github.com/OWNER/tracelens/commits/main
