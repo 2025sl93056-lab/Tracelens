@@ -7,6 +7,8 @@
  * Run `node dist/index.js` (or `npm start`) to start the HTTP server.
  */
 import { isTelemetryType, type TelemetryEvent } from '@tracelens/shared';
+import { createApp } from './server.js';
+import { createPool, ensureSchema } from './db.js';
 
 /** Narrow unknown JSON into a TelemetryEvent, or throw a descriptive error. */
 export function parseTelemetryEvent(input: unknown): TelemetryEvent {
@@ -34,9 +36,6 @@ export function parseTelemetryEvent(input: unknown): TelemetryEvent {
 
 // Start the HTTP server when run directly (not imported by tests).
 if (process.argv[1]?.endsWith('index.js') || process.argv[1]?.endsWith('index.ts')) {
-  const { createApp } = await import('./server.js');
-  const { createPool, ensureSchema } = await import('./db.js');
-
   const port = Number(process.env['INGESTION_PORT'] ?? 4001);
   const apiKey = process.env['INGESTION_API_KEY'] ?? 'dev-ingest-key';
 

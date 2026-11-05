@@ -13,9 +13,13 @@ COPY packages/ingestion/package.json ./packages/ingestion/
 COPY packages/ingestion/src ./packages/ingestion/src
 COPY packages/ingestion/tsconfig.json ./packages/ingestion/
 
-RUN npm ci --workspace=@tracelens/shared --workspace=@tracelens/ingestion --ignore-scripts
+# The TypeScript compiler is declared in the root workspace.
+RUN npm ci --include-workspace-root \
+  --workspace=@tracelens/shared --workspace=@tracelens/ingestion --ignore-scripts
 RUN npm run build --workspace=@tracelens/shared
 RUN npm run build --workspace=@tracelens/ingestion
+# Keep root build tools out of the runtime node_modules copy.
+RUN npm prune --omit=dev --ignore-scripts
 
 # ---- runtime stage ----
 FROM node:20-alpine
