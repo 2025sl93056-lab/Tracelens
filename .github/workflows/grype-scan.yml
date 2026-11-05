@@ -1,0 +1,73 @@
+name: Grype Vulnerability Scan
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'sbom.json'
+      - 'package-lock.json'
+      - 'packages/**/package.json'
+      - '.github/workflows/grype-scan.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'sbom.json'
+      - 'package-lock.json'
+      - 'packages/**/package.json'
+      - '.github/workflows/grype-scan.yml'
+  schedule:
+    # Run every Sunday at midnight UTC to catch newly published CVEs
+    - cron: '0 0 * * 0'
+  workflow_dispatch:
+    inputs:
+      fail_on_severity:
+        description: 'Minimum severity that fails the scan (negligible/low/medium/high/critical)'
+        required: false
+        default: 'critical'
+
+permissions:
+  contents: read
+  security-events: write  # required to upload SARIF to GitHub Code Scanning
+
+jobs:
+  grype-scan:
+    name: Scan dependencies for CVEs
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ── Scan the SBOM — table output in the job log ───────────────────
+      # fail-build is false: CVEs in transitive deps are advisory for an
+      # open-source project that does not control upstream release cadence.
+      # The table output is visible in the job log; artefact saves the JSON.
+      - name: Scan sbom.json with Grype (table)
+        id: grype-sbom-table
+        uses: anchore/scan-action@v6
+        with:
+          sbom: sbom.json
+          fail-build: false
+          severity-cutoff: ${{ github.event.inputs.fail_on_severity || 'critical' }}
+          output-format: table
+
+      # ── Also produce JSON output for the downloadable artefact ────────
+      - name: Scan sbom.json with Grype (JSON artefact)
+        id: grype-sbom-json
+        uses: anchore/scan-action@v6
+        if: always()
+        with:
+          sbom: sbom.json
+          fail-build: false
+          severity-cutoff: ${{ github.event.inputs.fail_on_severity || 'critical' }}
+          output-format: json
+          output-file: grype-results.json
+
+      # ── Save JSON report as a downloadable artefact ──────────────────
+      - name: Upload Grype JSON artefact
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: grype-report-${{ github.run_number }}
+          path: grype-results.json
+          retention-days: 30
