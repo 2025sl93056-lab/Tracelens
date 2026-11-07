@@ -1,5 +1,8 @@
 # TraceLens
 
+[![CI](https://github.com/2025sl93056-lab/Tracelens/actions/workflows/ci.yml/badge.svg)](https://github.com/2025sl93056-lab/Tracelens/actions/workflows/ci.yml)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
+
 **From Alert to Root Cause.**
 
 TraceLens is an open-source, evidence-driven **incident intelligence and root-cause investigation** tool for distributed systems. It ingests telemetry (logs, metrics, traces) and change events (deployments, config changes), automatically detects incidents, builds an **incident timeline**, correlates it with **recent changes ("What changed?")**, and renders a **service dependency graph** so engineers can move from _alert → evidence → probable cause → affected components_.

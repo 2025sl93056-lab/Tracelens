@@ -1,7 +1,13 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { AddressInfo } from 'node:net';
 import type { Server } from 'node:http';
-import type { DependencyGraph, Incident, IncidentSummary, LoginResponse } from '@tracelens/shared';
+import type {
+  DependencyGraph,
+  Incident,
+  IncidentListResponse,
+  IncidentSummary,
+  LoginResponse,
+} from '@tracelens/shared';
 import { createApp } from './app.js';
 import type { AuthConfig } from './auth.js';
 import { InMemoryDataStore } from './repository.js';
@@ -23,7 +29,12 @@ let server: Server;
 let base: string;
 
 beforeAll(async () => {
-  const app = createApp({ store: new InMemoryDataStore(), auth, version: '9.9.9' });
+  const app = createApp({
+    store: new InMemoryDataStore(),
+    auth,
+    version: '9.9.9',
+    corsOrigins: ['http://localhost:5173'],
+  });
   await new Promise<void>((resolve) => {
     server = app.listen(0, resolve);
   });
@@ -134,15 +145,126 @@ describe('RBAC (viewer vs admin)', () => {
   });
 });
 
+describe('CORS', () => {
+  it('allows requests from an explicitly listed origin', async () => {
+    const res = await fetch(`${base}/health`, {
+      headers: { origin: 'http://localhost:5173' },
+    });
+    expect(res.status).toBe(200);
+    expect(res.headers.get('access-control-allow-origin')).toBe('http://localhost:5173');
+  });
+
+  it('does not set ACAO header for a disallowed origin', async () => {
+    const res = await fetch(`${base}/health`, {
+      headers: { origin: 'http://evil.example.com' },
+    });
+    expect(res.headers.get('access-control-allow-origin')).not.toBe('http://evil.example.com');
+  });
+
+  it('responds correctly to an OPTIONS preflight from an allowed origin', async () => {
+    const res = await fetch(`${base}/auth/login`, {
+      method: 'OPTIONS',
+      headers: {
+        origin: 'http://localhost:5173',
+        'access-control-request-method': 'POST',
+        'access-control-request-headers': 'content-type',
+      },
+    });
+    expect([200, 204]).toContain(res.status);
+    expect(res.headers.get('access-control-allow-origin')).toBe('http://localhost:5173');
+  });
+});
+
+describe('JSON body size limit', () => {
+  it('rejects a body over the configured limit with 413 and JSON error', async () => {
+    const tinyApp = createApp({
+      store: new InMemoryDataStore(),
+      auth,
+      version: '9.9.9',
+      maxBodySize: '1b',
+      corsOrigins: ['http://localhost:5173'],
+    });
+    const tinyServer = await new Promise<import('node:http').Server>((resolve) => {
+      const s = tinyApp.listen(0, () => resolve(s));
+    });
+    const { port: tinyPort } = tinyServer.address() as import('node:net').AddressInfo;
+    const tinyBase = `http://127.0.0.1:${tinyPort}`;
+    const res = await fetch(`${tinyBase}/auth/login`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ username: 'admin', password: 'admin-pw' }),
+    });
+    await new Promise<void>((resolve, reject) => tinyServer.close((e) => (e ? reject(e) : resolve())));
+    expect(res.status).toBe(413);
+    const body = (await res.json()) as { error: string };
+    expect(body.error).toMatch(/too large/i);
+  });
+});
+
 describe('data routes', () => {
-  it('GET /incidents returns summaries newest-first', async () => {
+  it('GET /incidents returns paginated envelope newest-first', async () => {
     const res = await fetch(`${base}/incidents`, {
       headers: auth_header(await token('viewer', 'viewer-pw')),
     });
-    const body = (await res.json()) as IncidentSummary[];
-    expect(body.map((i) => i.id)).toEqual(['INC-1043', 'INC-1042']);
-    expect(body[0]).toHaveProperty('severity');
-    expect(body[0]).not.toHaveProperty('timeline'); // summary, not full incident
+    const body = (await res.json()) as IncidentListResponse;
+    expect(body.items.map((i: IncidentSummary) => i.id)).toEqual(['INC-1043', 'INC-1042']);
+    expect(body.total).toBe(2);
+    expect(body.limit).toBe(50);
+    expect(body.offset).toBe(0);
+    expect(body.items[0]).toHaveProperty('severity');
+    expect(body.items[0]).toHaveProperty('status');
+    expect(body.items[0]).not.toHaveProperty('timeline');
+  });
+
+  it('GET /incidents supports limit and offset pagination', async () => {
+    const res = await fetch(`${base}/incidents?limit=1&offset=1`, {
+      headers: auth_header(await token('viewer', 'viewer-pw')),
+    });
+    const body = (await res.json()) as IncidentListResponse;
+    expect(body.items).toHaveLength(1);
+    expect(body.items[0].id).toBe('INC-1042');
+    expect(body.total).toBe(2);
+    expect(body.limit).toBe(1);
+    expect(body.offset).toBe(1);
+  });
+
+  it('GET /incidents filters by severity', async () => {
+    const res = await fetch(`${base}/incidents?severity=high`, {
+      headers: auth_header(await token('viewer', 'viewer-pw')),
+    });
+    const body = (await res.json()) as IncidentListResponse;
+    expect(body.items.every((i: IncidentSummary) => i.severity === 'high')).toBe(true);
+    expect(body.total).toBe(1);
+  });
+
+  it('GET /incidents filters by status', async () => {
+    const res = await fetch(`${base}/incidents?status=open`, {
+      headers: auth_header(await token('viewer', 'viewer-pw')),
+    });
+    const body = (await res.json()) as IncidentListResponse;
+    expect(body.items.every((i: IncidentSummary) => i.status === 'open')).toBe(true);
+    expect(body.total).toBe(1);
+  });
+
+  it('GET /incidents returns 400 for an invalid severity', async () => {
+    const res = await fetch(`${base}/incidents?severity=extreme`, {
+      headers: auth_header(await token('viewer', 'viewer-pw')),
+    });
+    expect(res.status).toBe(400);
+  });
+
+  it('GET /incidents returns 400 for an invalid status', async () => {
+    const res = await fetch(`${base}/incidents?status=pending`, {
+      headers: auth_header(await token('viewer', 'viewer-pw')),
+    });
+    expect(res.status).toBe(400);
+  });
+
+  it('GET /incidents returns 400 for an invalid limit', async () => {
+    const res = await fetch(`${base}/incidents?limit=-1`, {
+      headers: auth_header(await token('viewer', 'viewer-pw')),
+    });
+    expect(res.status).toBe(400);
   });
 
   it('GET /incidents/:id returns the full incident', async () => {
@@ -199,8 +321,6 @@ describe('data routes', () => {
     const body = (await res.json()) as { node: string; direction?: string; affected: string[] };
     expect(body.node).toBe('payment');
     expect(body.direction).toBe('upstream');
-    // gateway → order → payment: both callers are affected if payment degrades,
-    // and payment's own dependency (db-sim) is NOT in the upstream set.
     expect(body.affected.sort()).toEqual(['gateway', 'order']);
   });
 
@@ -234,3 +354,4 @@ describe('data routes', () => {
     expect(body).toEqual({ node: 'db-sim', direction: 'downstream', affected: [] });
   });
 });
+

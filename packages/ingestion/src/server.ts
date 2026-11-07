@@ -5,12 +5,16 @@
  * The pool is injected so tests can supply a real test-DB pool or a stub.
  */
 import express, { type Request, type Response, type NextFunction } from 'express';
+import morgan from 'morgan';
 import { parseTelemetryEvent } from './index.js';
 import { type DbPool, insertEvent, insertEvents } from './db.js';
 
 export function createApp(pool: DbPool, apiKey: string) {
   const app = express();
-  app.use(express.json());
+  app.use(express.json({ limit: process.env['MAX_BODY_SIZE'] ?? '256kb' }));
+  if (process.env['NODE_ENV'] !== 'test') {
+    app.use(morgan(process.env['NODE_ENV'] === 'production' ? 'combined' : 'dev'));
+  }
 
   // --- auth middleware ---
   function requireApiKey(req: Request, res: Response, next: NextFunction): void {
@@ -51,6 +55,17 @@ export function createApp(pool: DbPool, apiKey: string) {
       res.status(400).json({ error: 'request body must be an array of telemetry events' });
       return;
     }
+    if (req.body.length === 0) {
+      res.status(400).json({ error: 'batch must contain at least one event' });
+      return;
+    }
+    const maxBatchSize = parseInt(process.env['INGESTION_MAX_BATCH_SIZE'] ?? '1000', 10);
+    if (req.body.length > maxBatchSize) {
+      res
+        .status(413)
+        .json({ error: `batch size ${req.body.length} exceeds maximum of ${maxBatchSize}` });
+      return;
+    }
     const events = [];
     for (let i = 0; i < req.body.length; i++) {
       try {
@@ -67,6 +82,22 @@ export function createApp(pool: DbPool, apiKey: string) {
       console.error('db batch insert failed', err);
       res.status(500).json({ error: 'failed to persist events' });
     }
+  });
+
+  app.use((err: unknown, _req: Request, res: Response, _next: NextFunction): void => {
+    if (err instanceof Error && 'status' in err) {
+      const status = (err as { status: number }).status;
+      if (status === 413) {
+        res.status(413).json({ error: 'request body too large' });
+        return;
+      }
+      if (status === 400) {
+        res.status(400).json({ error: err.message });
+        return;
+      }
+    }
+    console.error('unhandled error', err);
+    res.status(500).json({ error: 'internal error' });
   });
 
   return app;

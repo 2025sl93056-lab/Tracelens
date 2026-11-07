@@ -53,6 +53,7 @@ export const SEED_INCIDENTS: Incident[] = [
     id: 'INC-1042',
     startedAt: '2026-10-18T14:32:18.000Z',
     severity: 'high',
+    status: 'resolved',
     affectedServices: ['payment', 'order'],
     timeline: [
       { at: '2026-10-18T14:30:00.000Z', kind: 'deploy', text: 'payment deployed v4.3.1' },
@@ -84,6 +85,7 @@ export const SEED_INCIDENTS: Incident[] = [
     id: 'INC-1043',
     startedAt: '2026-10-20T09:05:00.000Z',
     severity: 'medium',
+    status: 'open',
     affectedServices: ['inventory'],
     timeline: [
       {

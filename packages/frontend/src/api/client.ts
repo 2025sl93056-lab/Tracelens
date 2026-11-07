@@ -2,6 +2,7 @@ import type {
   LoginRequest,
   LoginResponse,
   IncidentSummary,
+  IncidentListResponse,
   Incident,
   DependencyGraph,
   ImpactResult,
@@ -55,9 +56,23 @@ export const api = {
     return request<LoginResponse>(API_ROUTES.login, { method: 'POST', body: JSON.stringify(body) });
   },
 
-  incidents: () => {
-    if (_mock) return delay<IncidentSummary[]>(MOCK_INCIDENTS);
-    return request<IncidentSummary[]>(API_ROUTES.incidents);
+  incidents: (params?: { limit?: number; offset?: number; severity?: string; status?: string }) => {
+    if (_mock) {
+      const items = MOCK_INCIDENTS;
+      return delay<IncidentListResponse>({
+        items,
+        total: items.length,
+        limit: params?.limit ?? 50,
+        offset: params?.offset ?? 0,
+      });
+    }
+    const qs = new URLSearchParams();
+    if (params?.limit !== undefined) qs.set('limit', String(params.limit));
+    if (params?.offset !== undefined) qs.set('offset', String(params.offset));
+    if (params?.severity) qs.set('severity', params.severity);
+    if (params?.status) qs.set('status', params.status);
+    const query = qs.toString();
+    return request<IncidentListResponse>(`${API_ROUTES.incidents}${query ? `?${query}` : ''}`);
   },
 
   incident: (id: string) => {
