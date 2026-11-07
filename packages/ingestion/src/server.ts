@@ -8,7 +8,7 @@ import express, { type Request, type Response, type NextFunction } from 'express
 import morgan from 'morgan';
 import { parseTelemetryEvent } from './index.js';
 import { type DbPool, insertEvent, insertEvents } from './db.js';
-import { registry, httpRequestsTotal, httpRequestDurationSeconds, eventsIngestedTotal, batchSizeHistogram } from './metrics.js';
+import { registry, httpRequestsTotal, httpRequestDurationSeconds, httpRequestsInFlight, httpRequestErrors, eventsIngestedTotal, batchSizeHistogram, batchValidationErrors, ingestRejectedTotal } from './metrics.js';
 
 export function createApp(pool: DbPool, apiKey: string) {
   const app = express();
@@ -20,12 +20,15 @@ export function createApp(pool: DbPool, apiKey: string) {
   // --- Prometheus request instrumentation -----------------------------------
   app.use((req: Request, res: Response, next: NextFunction) => {
     const start = process.hrtime.bigint();
+    httpRequestsInFlight.inc({ method: req.method });
     res.on('finish', () => {
+      httpRequestsInFlight.dec({ method: req.method });
       const route = req.route?.path ?? req.path;
       const labels = { method: req.method, route, status_code: String(res.statusCode) };
       httpRequestsTotal.inc(labels);
-      const durationMs = Number(process.hrtime.bigint() - start) / 1e6;
-      httpRequestDurationSeconds.observe(labels, durationMs / 1000);
+      const durationSec = Number(process.hrtime.bigint() - start) / 1e9;
+      httpRequestDurationSeconds.observe(labels, durationSec);
+      if (res.statusCode >= 400) httpRequestErrors.inc(labels);
     });
     next();
   });
@@ -45,6 +48,7 @@ export function createApp(pool: DbPool, apiKey: string) {
       next();
       return;
     }
+    ingestRejectedTotal.inc({ reason: 'unauthorized' });
     res.status(401).json({ error: 'invalid or missing API key' });
   }
 
@@ -77,11 +81,13 @@ export function createApp(pool: DbPool, apiKey: string) {
       return;
     }
     if (req.body.length === 0) {
+      ingestRejectedTotal.inc({ reason: 'empty_batch' });
       res.status(400).json({ error: 'batch must contain at least one event' });
       return;
     }
     const maxBatchSize = parseInt(process.env['INGESTION_MAX_BATCH_SIZE'] ?? '1000', 10);
     if (req.body.length > maxBatchSize) {
+      ingestRejectedTotal.inc({ reason: 'batch_too_large' });
       res
         .status(413)
         .json({ error: `batch size ${req.body.length} exceeds maximum of ${maxBatchSize}` });
@@ -92,6 +98,8 @@ export function createApp(pool: DbPool, apiKey: string) {
       try {
         events.push(parseTelemetryEvent(req.body[i]));
       } catch (err) {
+        batchValidationErrors.inc();
+        ingestRejectedTotal.inc({ reason: 'validation_error' });
         res.status(400).json({ error: `event[${i}]: ${(err as Error).message}` });
         return;
       }

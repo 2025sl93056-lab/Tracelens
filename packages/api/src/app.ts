@@ -31,7 +31,15 @@ import {
   type AuthConfig,
 } from './auth.js';
 import { InMemoryDataStore, type DataStore } from './repository.js';
-import { registry, httpRequestsTotal, httpRequestDurationSeconds } from './metrics.js';
+import {
+  registry,
+  httpRequestsTotal,
+  httpRequestDurationSeconds,
+  httpRequestsInFlight,
+  httpRequestErrors,
+  authFailuresTotal,
+  activeIncidents,
+} from './metrics.js';
 
 /** Dependencies injected into {@link createApp}. */
 export interface AppDeps {
@@ -77,12 +85,15 @@ export function createApp(deps: AppDeps): Express {
   // --- Prometheus request instrumentation -----------------------------------
   app.use((req: Request, res: Response, next: NextFunction) => {
     const start = process.hrtime.bigint();
+    httpRequestsInFlight.inc({ method: req.method });
     res.on('finish', () => {
+      httpRequestsInFlight.dec({ method: req.method });
       const route = req.route?.path ?? req.path;
       const labels = { method: req.method, route, status_code: String(res.statusCode) };
       httpRequestsTotal.inc(labels);
-      const durationMs = Number(process.hrtime.bigint() - start) / 1e6;
-      httpRequestDurationSeconds.observe(labels, durationMs / 1000);
+      const durationSec = Number(process.hrtime.bigint() - start) / 1e9;
+      httpRequestDurationSeconds.observe(labels, durationSec);
+      if (res.statusCode >= 400) httpRequestErrors.inc(labels);
     });
     next();
   });
@@ -109,6 +120,7 @@ export function createApp(deps: AppDeps): Express {
     }
     const user = authenticate(auth, username, password);
     if (!user) {
+      authFailuresTotal.inc({ reason: 'invalid_credentials' });
       res.status(401).json({ error: 'invalid credentials' });
       return;
     }
@@ -169,7 +181,13 @@ export function createApp(deps: AppDeps): Express {
       status = rawStatus;
     }
 
-    res.json(store.listIncidentsPaginated({ limit, offset, severity, status }));
+    const result = store.listIncidentsPaginated({ limit, offset, severity, status });
+    // Keep the active-incidents gauge up to date on every list call
+    for (const sev of SEVERITY_LEVELS) {
+      const openCount = store.listIncidentsPaginated({ limit: MAX_LIMIT, offset: 0, severity: sev, status: 'open' }).total;
+      activeIncidents.set({ severity: sev }, openCount);
+    }
+    res.json(result);
   });
 
   app.get(
