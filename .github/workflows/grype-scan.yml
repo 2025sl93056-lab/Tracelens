@@ -4,70 +4,149 @@ on:
   push:
     branches: [main]
     paths:
-      - 'sbom.json'
       - 'package-lock.json'
       - 'packages/**/package.json'
+      - 'packages/api/Dockerfile'
+      - 'packages/frontend/Dockerfile'
       - '.github/workflows/grype-scan.yml'
   pull_request:
     branches: [main]
     paths:
-      - 'sbom.json'
       - 'package-lock.json'
       - 'packages/**/package.json'
+      - 'packages/api/Dockerfile'
+      - 'packages/frontend/Dockerfile'
       - '.github/workflows/grype-scan.yml'
   schedule:
     # Run every Sunday at midnight UTC to catch newly published CVEs
     - cron: '0 0 * * 0'
   workflow_dispatch:
     inputs:
-      fail_on_severity:
+      severity_cutoff:
         description: 'Minimum severity that fails the scan (negligible/low/medium/high/critical)'
         required: false
-        default: 'critical'
+        default: 'high'
 
 permissions:
   contents: read
   security-events: write  # required to upload SARIF to GitHub Code Scanning
+  packages: read
 
 jobs:
-  grype-scan:
-    name: Scan dependencies for CVEs
+  # ── Job 1: Generate a fresh SBOM from the repo using Syft ──────────────────
+  generate-sbom:
+    name: Generate SBOM via Syft
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # ── Scan the SBOM — table output in the job log ───────────────────
-      # fail-build is false: CVEs in transitive deps are advisory for an
-      # open-source project that does not control upstream release cadence.
-      # The table output is visible in the job log; artefact saves the JSON.
-      - name: Scan sbom.json with Grype (table)
-        id: grype-sbom-table
+      - name: Generate SBOM with Syft
+        uses: anchore/sbom-action@v0
+        with:
+          path: .
+          format: cyclonedx-json
+          output-file: sbom-generated.json
+          upload-artifact: false
+
+      - name: Upload SBOM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: sbom-generated.json
+          retention-days: 7
+
+  # ── Job 2: Scan SBOM for CVEs; fail on high/critical for PRs/pushes ────────
+  scan:
+    name: Scan dependencies for CVEs
+    runs-on: ubuntu-latest
+    needs: generate-sbom
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download SBOM artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: sbom
+          path: .
+
+      # ── SARIF scan — results go to GitHub Security → Code Scanning tab ────
+      - name: Scan SBOM with Grype (SARIF)
+        id: grype-sarif
         uses: anchore/scan-action@v6
         with:
-          sbom: sbom.json
+          sbom: sbom-generated.json
           fail-build: false
-          severity-cutoff: ${{ github.event.inputs.fail_on_severity || 'critical' }}
-          output-format: table
+          severity-cutoff: ${{ github.event.inputs.severity_cutoff || 'high' }}
+          output-format: sarif
+          output-file: grype-results.sarif
 
-      # ── Also produce JSON output for the downloadable artefact ────────
-      - name: Scan sbom.json with Grype (JSON artefact)
-        id: grype-sbom-json
+      - name: Upload SARIF to GitHub Code Scanning
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: grype-results.sarif
+
+      # ── Table scan — visible in the job log; fails build on non-schedule ──
+      - name: Scan SBOM with Grype (table log)
+        id: grype-table
         uses: anchore/scan-action@v6
         if: always()
         with:
-          sbom: sbom.json
+          sbom: sbom-generated.json
+          fail-build: ${{ github.event_name != 'schedule' }}
+          severity-cutoff: ${{ github.event.inputs.severity_cutoff || 'high' }}
+          output-format: table
+
+      # ── JSON artefact for download / tooling integration ─────────────────
+      - name: Scan SBOM with Grype (JSON artifact)
+        id: grype-json
+        uses: anchore/scan-action@v6
+        if: always()
+        with:
+          sbom: sbom-generated.json
           fail-build: false
-          severity-cutoff: ${{ github.event.inputs.fail_on_severity || 'critical' }}
+          severity-cutoff: ${{ github.event.inputs.severity_cutoff || 'high' }}
           output-format: json
           output-file: grype-results.json
 
-      # ── Save JSON report as a downloadable artefact ──────────────────
-      - name: Upload Grype JSON artefact
+      - name: Upload Grype JSON artifact
         uses: actions/upload-artifact@v4
         if: always()
         with:
           name: grype-report-${{ github.run_number }}
           path: grype-results.json
           retention-days: 30
+
+      # ── Docker image scans — advisory only (base-image CVEs are upstream) ─
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build API Docker image
+        run: docker build -t tracelens-api:ci -f packages/api/Dockerfile .
+        continue-on-error: true
+
+      - name: Scan API Docker image with Grype
+        uses: anchore/scan-action@v6
+        if: always()
+        with:
+          image: tracelens-api:ci
+          fail-build: false
+          severity-cutoff: ${{ github.event.inputs.severity_cutoff || 'high' }}
+          output-format: table
+
+      - name: Build Frontend Docker image
+        run: docker build -t tracelens-frontend:ci -f packages/frontend/Dockerfile .
+        continue-on-error: true
+
+      - name: Scan Frontend Docker image with Grype
+        uses: anchore/scan-action@v6
+        if: always()
+        with:
+          image: tracelens-frontend:ci
+          fail-build: false
+          severity-cutoff: ${{ github.event.inputs.severity_cutoff || 'high' }}
+          output-format: table
