@@ -10,12 +10,13 @@
 import type {
   DependencyGraph,
   GraphNode,
+  ImpactDirection,
   ImpactResult,
   Incident,
   IncidentSummary,
   TelemetryEvent,
 } from '@tracelens/shared';
-import { deriveGraphFromSpans, downstreamImpact } from '@tracelens/graph';
+import { computeImpact, deriveGraphFromSpans } from '@tracelens/graph';
 import { SEED_INCIDENTS, SEED_TRACE_SPANS, buildSeedGraph } from './seed.js';
 
 /** Read model the API serves. Implementations may be in-memory or Postgres. */
@@ -28,8 +29,8 @@ export interface DataStore {
   listServices(): GraphNode[];
   /** The dependency graph (`GET /graph`). */
   getGraph(): DependencyGraph;
-  /** Downstream impact from a node (`GET /graph/impact?node=`). */
-  getImpact(node: string): ImpactResult;
+  /** Impact from a node (`GET /graph/impact?node=&direction=`). Defaults to downstream. */
+  getImpact(node: string, direction?: ImpactDirection): ImpactResult;
   /** Re-derive the graph from trace spans (admin maintenance). */
   rebuildGraph(spans?: readonly TelemetryEvent[]): DependencyGraph;
 }
@@ -78,8 +79,8 @@ export class InMemoryDataStore implements DataStore {
     return this.graph;
   }
 
-  getImpact(node: string): ImpactResult {
-    return downstreamImpact(this.graph, node);
+  getImpact(node: string, direction?: ImpactDirection): ImpactResult {
+    return computeImpact(this.graph, node, direction);
   }
 
   rebuildGraph(spans: readonly TelemetryEvent[] = SEED_TRACE_SPANS): DependencyGraph {

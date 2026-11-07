@@ -185,9 +185,30 @@ describe('data routes', () => {
       headers: auth_header(await token('viewer', 'viewer-pw')),
     });
     expect(res.status).toBe(200);
-    const body = (await res.json()) as { node: string; affected: string[] };
+    const body = (await res.json()) as { node: string; direction?: string; affected: string[] };
     expect(body.node).toBe('order');
+    expect(body.direction).toBe('downstream');
     expect(body.affected.sort()).toEqual(['db-sim', 'inventory', 'payment']);
+  });
+
+  it('GET /graph/impact?direction=upstream returns dependents (callers)', async () => {
+    const res = await fetch(`${base}/graph/impact?node=payment&direction=upstream`, {
+      headers: auth_header(await token('viewer', 'viewer-pw')),
+    });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { node: string; direction?: string; affected: string[] };
+    expect(body.node).toBe('payment');
+    expect(body.direction).toBe('upstream');
+    // gateway → order → payment: both callers are affected if payment degrades,
+    // and payment's own dependency (db-sim) is NOT in the upstream set.
+    expect(body.affected.sort()).toEqual(['gateway', 'order']);
+  });
+
+  it('GET /graph/impact rejects an invalid direction with 400', async () => {
+    const res = await fetch(`${base}/graph/impact?node=order&direction=sideways`, {
+      headers: auth_header(await token('viewer', 'viewer-pw')),
+    });
+    expect(res.status).toBe(400);
   });
 
   it('GET /graph/impact requires the node query param (400)', async () => {
@@ -209,7 +230,7 @@ describe('data routes', () => {
       headers: auth_header(await token('viewer', 'viewer-pw')),
     });
     expect(res.status).toBe(200);
-    const body = (await res.json()) as { node: string; affected: string[] };
-    expect(body).toEqual({ node: 'db-sim', affected: [] });
+    const body = (await res.json()) as { node: string; direction?: string; affected: string[] };
+    expect(body).toEqual({ node: 'db-sim', direction: 'downstream', affected: [] });
   });
 });

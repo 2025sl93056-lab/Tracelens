@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Open-source project files: Apache-2.0 license, README, CONTRIBUTING, Code of Conduct, issue/PR templates.
 - **ingestion**: HTTP API (`POST /telemetry`, `POST /telemetry/batch`, `GET /health`) with API-key auth, validation, and PostgreSQL persistence (resolves #1).
 - **ingestion**: Dockerfile for containerised deployment; ingestion service wired into `docker-compose.yml`.
+- **graph/api**: direction-aware impact analysis — `upstreamImpact`/`computeImpact` in `@tracelens/graph` and a `direction=downstream|upstream` query param on `GET /graph/impact`, so the API can answer "who is affected if this service degrades?" (upstream dependents) as well as "what does it depend on?" (downstream). `ImpactResult` now carries the `direction` it was computed for.
 
 ### Fixed
 
