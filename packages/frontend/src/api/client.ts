@@ -1,7 +1,6 @@
 import type {
   LoginRequest,
   LoginResponse,
-  IncidentSummary,
   IncidentListResponse,
   Incident,
   DependencyGraph,
