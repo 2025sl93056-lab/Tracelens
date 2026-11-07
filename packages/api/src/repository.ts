@@ -13,7 +13,9 @@ import type {
   ImpactDirection,
   ImpactResult,
   Incident,
+  IncidentListResponse,
   IncidentSummary,
+  Severity,
   TelemetryEvent,
 } from '@tracelens/shared';
 import { computeImpact, deriveGraphFromSpans } from '@tracelens/graph';
@@ -23,6 +25,13 @@ import { SEED_INCIDENTS, SEED_TRACE_SPANS, buildSeedGraph } from './seed.js';
 export interface DataStore {
   /** Compact incidents for the list view (`GET /incidents`). */
   listIncidents(): IncidentSummary[];
+  /** Paginated + filtered incident list. */
+  listIncidentsPaginated(opts: {
+    limit: number;
+    offset: number;
+    severity?: Severity;
+    status?: 'open' | 'resolved';
+  }): IncidentListResponse;
   /** Full incident by id (`GET /incidents/:id`), or `undefined` if unknown. */
   getIncident(id: string): Incident | undefined;
   /** Service nodes (`GET /services`). */
@@ -41,6 +50,7 @@ function toSummary(incident: Incident): IncidentSummary {
     id: incident.id,
     startedAt: incident.startedAt,
     severity: incident.severity,
+    status: incident.status,
     affectedServices: incident.affectedServices,
   };
 }
@@ -65,6 +75,26 @@ export class InMemoryDataStore implements DataStore {
     return [...this.incidents.values()]
       .sort((a, b) => b.startedAt.localeCompare(a.startedAt))
       .map(toSummary);
+  }
+
+  listIncidentsPaginated(opts: {
+    limit: number;
+    offset: number;
+    severity?: Severity;
+    status?: 'open' | 'resolved';
+  }): IncidentListResponse {
+    let all = [...this.incidents.values()].sort((a, b) =>
+      b.startedAt.localeCompare(a.startedAt),
+    );
+    if (opts.severity !== undefined) {
+      all = all.filter((i) => i.severity === opts.severity);
+    }
+    if (opts.status !== undefined) {
+      all = all.filter((i) => i.status === opts.status);
+    }
+    const total = all.length;
+    const items = all.slice(opts.offset, opts.offset + opts.limit).map(toSummary);
+    return { items, total, limit: opts.limit, offset: opts.offset };
   }
 
   getIncident(id: string): Incident | undefined {

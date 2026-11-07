@@ -40,12 +40,17 @@ export function IncidentListPage() {
   const [filterSev, setFilterSev] = useState<string>('all');
   const navigate = useNavigate();
 
-  useEffect(() => {
+  const loadIncidents = () => {
+    setLoading(true);
     api
       .incidents()
-      .then(setIncidents)
+      .then((res) => setIncidents(res.items))
       .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load'))
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    loadIncidents();
   }, []);
 
   const counts = {
@@ -110,7 +115,7 @@ export function IncidentListPage() {
         </div>
         <button
           className="btn btn-secondary btn-sm"
-          onClick={() => { setLoading(true); api.incidents().then(setIncidents).finally(() => setLoading(false)); }}
+          onClick={loadIncidents}
           style={{ gap: 6 }}
         >
           <span style={{ display: 'inline-block', transition: 'transform 0.4s', ...(loading ? { animation: 'spin 0.8s linear infinite' } : {}) }}>↻</span>

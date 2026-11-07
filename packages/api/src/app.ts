@@ -13,7 +13,15 @@
  *   - `POST /graph/rebuild`  requires the `admin` role (maintenance)
  */
 import express, { type Express, type NextFunction, type Request, type Response } from 'express';
-import { API_ROUTES, type ImpactDirection, type LoginResponse } from '@tracelens/shared';
+import cors from 'cors';
+import morgan from 'morgan';
+import {
+  API_ROUTES,
+  type ImpactDirection,
+  type IncidentListResponse,
+  type LoginResponse,
+  SEVERITY_LEVELS,
+} from '@tracelens/shared';
 import { healthStatus, type HealthStatus } from './index.js';
 import {
   authenticate,
@@ -23,6 +31,15 @@ import {
   type AuthConfig,
 } from './auth.js';
 import { InMemoryDataStore, type DataStore } from './repository.js';
+import {
+  registry,
+  httpRequestsTotal,
+  httpRequestDurationSeconds,
+  httpRequestsInFlight,
+  httpRequestErrors,
+  authFailuresTotal,
+  activeIncidents,
+} from './metrics.js';
 
 /** Dependencies injected into {@link createApp}. */
 export interface AppDeps {
@@ -30,12 +47,62 @@ export interface AppDeps {
   auth: AuthConfig;
   /** Version string reported by `GET /health`. */
   version?: string;
+  /** Max JSON request body size (e.g. '256kb'). Defaults to MAX_BODY_SIZE env var or '256kb'. */
+  maxBodySize?: string;
+  /** Allowed CORS origins. Defaults to CORS_ALLOWED_ORIGINS env var or 'http://localhost:5173'. */
+  corsOrigins?: string[];
 }
 
 export function createApp(deps: AppDeps): Express {
-  const { store, auth, version } = deps;
+  const { store, auth, version, maxBodySize, corsOrigins } = deps;
   const app = express();
-  app.use(express.json());
+
+  const allowedOrigins =
+    corsOrigins ??
+    (process.env['CORS_ALLOWED_ORIGINS'] ?? 'http://localhost:5173')
+      .split(',')
+      .map((o) => o.trim())
+      .filter(Boolean);
+  app.use(
+    cors({
+      origin: (origin, callback) => {
+        // Allow server-to-server requests (no Origin header) and listed origins.
+        if (!origin || allowedOrigins.includes(origin)) {
+          callback(null, true);
+        } else {
+          callback(new Error(`CORS: origin ${origin} not allowed`));
+        }
+      },
+      credentials: true,
+    }),
+  );
+
+  app.use(express.json({ limit: maxBodySize ?? process.env['MAX_BODY_SIZE'] ?? '256kb' }));
+  if (process.env['NODE_ENV'] !== 'test') {
+    app.use(morgan(process.env['NODE_ENV'] === 'production' ? 'combined' : 'dev'));
+  }
+
+  // --- Prometheus request instrumentation -----------------------------------
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    const start = process.hrtime.bigint();
+    httpRequestsInFlight.inc({ method: req.method });
+    res.on('finish', () => {
+      httpRequestsInFlight.dec({ method: req.method });
+      const route = req.route?.path ?? req.path;
+      const labels = { method: req.method, route, status_code: String(res.statusCode) };
+      httpRequestsTotal.inc(labels);
+      const durationSec = Number(process.hrtime.bigint() - start) / 1e9;
+      httpRequestDurationSeconds.observe(labels, durationSec);
+      if (res.statusCode >= 400) httpRequestErrors.inc(labels);
+    });
+    next();
+  });
+
+  // --- Metrics (public, scraped by Prometheus) ------------------------------
+  app.get('/metrics', async (_req: Request, res: Response) => {
+    res.set('Content-Type', registry.contentType);
+    res.end(await registry.metrics());
+  });
 
   // --- Health (public) ------------------------------------------------------
   app.get('/health', (_req: Request, res: Response<HealthStatus>) => {
@@ -53,6 +120,7 @@ export function createApp(deps: AppDeps): Express {
     }
     const user = authenticate(auth, username, password);
     if (!user) {
+      authFailuresTotal.inc({ reason: 'invalid_credentials' });
       res.status(401).json({ error: 'invalid credentials' });
       return;
     }
@@ -66,8 +134,60 @@ export function createApp(deps: AppDeps): Express {
   });
 
   // --- Incidents (viewer) ---------------------------------------------------
-  app.get(API_ROUTES.incidents, requireRole(auth, 'viewer'), (_req: Request, res: Response) => {
-    res.json(store.listIncidents());
+  const MAX_LIMIT = 200;
+  const DEFAULT_LIMIT = 50;
+
+  app.get(API_ROUTES.incidents, requireRole(auth, 'viewer'), (req: Request, res: Response<IncidentListResponse | { error: string }>) => {
+    const rawLimit = req.query.limit;
+    const rawOffset = req.query.offset;
+    const rawSeverity = req.query.severity;
+    const rawStatus = req.query.status;
+
+    let limit = DEFAULT_LIMIT;
+    if (rawLimit !== undefined) {
+      const parsed = Number(rawLimit);
+      if (!Number.isInteger(parsed) || parsed < 1) {
+        res.status(400).json({ error: '"limit" must be a positive integer' });
+        return;
+      }
+      limit = Math.min(parsed, MAX_LIMIT);
+    }
+
+    let offset = 0;
+    if (rawOffset !== undefined) {
+      const parsed = Number(rawOffset);
+      if (!Number.isInteger(parsed) || parsed < 0) {
+        res.status(400).json({ error: '"offset" must be a non-negative integer' });
+        return;
+      }
+      offset = parsed;
+    }
+
+    let severity: import('@tracelens/shared').Severity | undefined;
+    if (rawSeverity !== undefined) {
+      if (!SEVERITY_LEVELS.includes(rawSeverity as import('@tracelens/shared').Severity)) {
+        res.status(400).json({ error: `"severity" must be one of: ${SEVERITY_LEVELS.join(', ')}` });
+        return;
+      }
+      severity = rawSeverity as import('@tracelens/shared').Severity;
+    }
+
+    let status: 'open' | 'resolved' | undefined;
+    if (rawStatus !== undefined) {
+      if (rawStatus !== 'open' && rawStatus !== 'resolved') {
+        res.status(400).json({ error: '"status" must be "open" or "resolved"' });
+        return;
+      }
+      status = rawStatus;
+    }
+
+    const result = store.listIncidentsPaginated({ limit, offset, severity, status });
+    // Keep the active-incidents gauge up to date on every list call
+    for (const sev of SEVERITY_LEVELS) {
+      const openCount = store.listIncidentsPaginated({ limit: MAX_LIMIT, offset: 0, severity: sev, status: 'open' }).total;
+      activeIncidents.set({ severity: sev }, openCount);
+    }
+    res.json(result);
   });
 
   app.get(
@@ -129,6 +249,14 @@ export function createApp(deps: AppDeps): Express {
   });
 
   app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
+    if (
+      err instanceof Error &&
+      'status' in err &&
+      (err as { status: number }).status === 413
+    ) {
+      res.status(413).json({ error: 'request body too large' });
+      return;
+    }
     const message = err instanceof Error ? err.message : 'internal error';
     res.status(500).json({ error: message });
   });
