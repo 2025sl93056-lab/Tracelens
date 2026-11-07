@@ -84,6 +84,7 @@ export function buildIncident(
     id,
     startedAt: group.windowStart,
     severity,
+    status: 'open',
     affectedServices: services,
     timeline,
     signals,

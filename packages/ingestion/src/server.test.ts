@@ -150,6 +150,38 @@ describe('POST /telemetry/batch — validation', () => {
   });
 });
 
+describe('POST /telemetry/batch — batch size limits', () => {
+  const app = createApp(
+    {
+      connect: async () => ({
+        query: async (_sql: string, _params: unknown[]) => ({ rows: [{ id: 1 }] }),
+        release: () => undefined,
+      }),
+    } as unknown as DbPool,
+    TEST_API_KEY,
+  );
+  const authHeader = { 'x-api-key': TEST_API_KEY };
+
+  it('returns 400 for an empty array', async () => {
+    const { status, body } = await request(app, 'post', '/telemetry/batch', [], authHeader);
+    expect(status).toBe(400);
+    expect((body as { error: string }).error).toMatch(/at least one/i);
+  });
+
+  it('returns 413 when batch exceeds the configured maximum', async () => {
+    const oversized = Array.from({ length: 1001 }, () => VALID_EVENT);
+    const { status, body } = await request(app, 'post', '/telemetry/batch', oversized, authHeader);
+    expect(status).toBe(413);
+    expect((body as { error: string }).error).toMatch(/exceeds maximum/i);
+  });
+
+  it('accepts a batch exactly at the limit (1000 events)', async () => {
+    const atLimit = Array.from({ length: 1000 }, () => VALID_EVENT);
+    const { status } = await request(app, 'post', '/telemetry/batch', atLimit, authHeader);
+    expect(status).toBe(201);
+  });
+});
+
 describe.skipIf(!POSTGRES_AVAILABLE)('Integration — full emit → store flow', () => {
   let pool: DbPool;
 
