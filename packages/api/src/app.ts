@@ -31,6 +31,7 @@ import {
   type AuthConfig,
 } from './auth.js';
 import { InMemoryDataStore, type DataStore } from './repository.js';
+import { registry, httpRequestsTotal, httpRequestDurationSeconds } from './metrics.js';
 
 /** Dependencies injected into {@link createApp}. */
 export interface AppDeps {
@@ -72,6 +73,25 @@ export function createApp(deps: AppDeps): Express {
   if (process.env['NODE_ENV'] !== 'test') {
     app.use(morgan(process.env['NODE_ENV'] === 'production' ? 'combined' : 'dev'));
   }
+
+  // --- Prometheus request instrumentation -----------------------------------
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    const start = process.hrtime.bigint();
+    res.on('finish', () => {
+      const route = req.route?.path ?? req.path;
+      const labels = { method: req.method, route, status_code: String(res.statusCode) };
+      httpRequestsTotal.inc(labels);
+      const durationMs = Number(process.hrtime.bigint() - start) / 1e6;
+      httpRequestDurationSeconds.observe(labels, durationMs / 1000);
+    });
+    next();
+  });
+
+  // --- Metrics (public, scraped by Prometheus) ------------------------------
+  app.get('/metrics', async (_req: Request, res: Response) => {
+    res.set('Content-Type', registry.contentType);
+    res.end(await registry.metrics());
+  });
 
   // --- Health (public) ------------------------------------------------------
   app.get('/health', (_req: Request, res: Response<HealthStatus>) => {

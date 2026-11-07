@@ -1,6 +1,8 @@
 # TraceLens full-stack dev environment.
 #
 #   docker compose up --build    # starts Postgres + Adminer + ingestion + api + frontend
+#   Grafana:    http://localhost:3001  (admin / admin — change on first login)
+#   Prometheus: http://localhost:9090
 #
 services:
   postgres:
@@ -66,5 +68,42 @@ services:
     depends_on:
       api: { condition: service_healthy }
 
+  # --- Observability stack ---
+  prometheus:
+    image: prom/prometheus:v2.54.0
+    restart: unless-stopped
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheusdata:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=15d'
+      - '--web.enable-lifecycle'
+    ports:
+      - '${PROMETHEUS_PORT:-9090}:9090'
+    depends_on:
+      - api
+      - ingestion
+
+  grafana:
+    image: grafana/grafana:11.2.0
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GF_SECURITY_ADMIN_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: 'false'
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /etc/grafana/dashboards/api-metrics.json
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/etc/grafana/dashboards:ro
+      - grafanadata:/var/lib/grafana
+    ports:
+      - '${GRAFANA_PORT:-3001}:3000'
+    depends_on:
+      - prometheus
+
 volumes:
   pgdata:
+  prometheusdata:
+  grafanadata:

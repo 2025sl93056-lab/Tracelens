@@ -8,6 +8,7 @@ import express, { type Request, type Response, type NextFunction } from 'express
 import morgan from 'morgan';
 import { parseTelemetryEvent } from './index.js';
 import { type DbPool, insertEvent, insertEvents } from './db.js';
+import { registry, httpRequestsTotal, httpRequestDurationSeconds, eventsIngestedTotal, batchSizeHistogram } from './metrics.js';
 
 export function createApp(pool: DbPool, apiKey: string) {
   const app = express();
@@ -15,6 +16,25 @@ export function createApp(pool: DbPool, apiKey: string) {
   if (process.env['NODE_ENV'] !== 'test') {
     app.use(morgan(process.env['NODE_ENV'] === 'production' ? 'combined' : 'dev'));
   }
+
+  // --- Prometheus request instrumentation -----------------------------------
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    const start = process.hrtime.bigint();
+    res.on('finish', () => {
+      const route = req.route?.path ?? req.path;
+      const labels = { method: req.method, route, status_code: String(res.statusCode) };
+      httpRequestsTotal.inc(labels);
+      const durationMs = Number(process.hrtime.bigint() - start) / 1e6;
+      httpRequestDurationSeconds.observe(labels, durationMs / 1000);
+    });
+    next();
+  });
+
+  // --- Metrics (public, scraped by Prometheus) ------------------------------
+  app.get('/metrics', async (_req: Request, res: Response) => {
+    res.set('Content-Type', registry.contentType);
+    res.end(await registry.metrics());
+  });
 
   // --- auth middleware ---
   function requireApiKey(req: Request, res: Response, next: NextFunction): void {
@@ -43,6 +63,7 @@ export function createApp(pool: DbPool, apiKey: string) {
     }
     try {
       const id = await insertEvent(pool, event);
+      eventsIngestedTotal.inc({ type: event.type });
       res.status(201).json({ id });
     } catch (err) {
       console.error('db insert failed', err);
@@ -77,6 +98,8 @@ export function createApp(pool: DbPool, apiKey: string) {
     }
     try {
       const ids = await insertEvents(pool, events);
+      batchSizeHistogram.observe(events.length);
+      for (const ev of events) eventsIngestedTotal.inc({ type: ev.type });
       res.status(201).json({ ids });
     } catch (err) {
       console.error('db batch insert failed', err);
