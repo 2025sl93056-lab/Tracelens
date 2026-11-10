@@ -1,0 +1,7 @@
+ignore:
+  # Syft encodes `actions/download-artifact@v4.1.3` as version "v4" (floating major tag).
+  # We already pin to v4.1.3 which is the fixed release; this is a false positive.
+  - vulnerability: GHSA-cxww-7g56-2vh6
+    package:
+      name: download-artifact
+      type: github-action
