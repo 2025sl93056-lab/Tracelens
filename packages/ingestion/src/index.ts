@@ -3,19 +3,12 @@
  *
  * OWNER: Member 1 (Telemetry & Demo Environment)
  *
- * GOAL: accept telemetry over HTTP (API-key protected), validate it against the
- * shared contract, and persist it to PostgreSQL for the correlation and graph
- * services to read.
- *
- * TODO (issue + PR per item):
- *  - [ ] POST /telemetry (single) and POST /telemetry/batch, guarded by INGESTION_API_KEY.
- *  - [ ] Persist to PostgreSQL (schema coordinated with Member 3's data layer).
- *  - [ ] Reject malformed events with 400 and a helpful error.
- *  - [ ] Health endpoint for Docker.
- *
- * The validator below is the starting point and is already unit-tested.
+ * Exports `parseTelemetryEvent` for use by server.ts and tests.
+ * Run `node dist/index.js` (or `npm start`) to start the HTTP server.
  */
 import { isTelemetryType, type TelemetryEvent } from '@tracelens/shared';
+import { createApp } from './server.js';
+import { createPool, ensureSchema } from './db.js';
 
 /** Narrow unknown JSON into a TelemetryEvent, or throw a descriptive error. */
 export function parseTelemetryEvent(input: unknown): TelemetryEvent {
@@ -35,8 +28,22 @@ export function parseTelemetryEvent(input: unknown): TelemetryEvent {
   if (typeof e.name !== 'string' || e.name.length === 0) {
     throw new Error('telemetry event requires a non-empty "name"');
   }
-  if (e.value !== undefined && typeof e.value !== 'number') {
-    throw new Error('telemetry "value" must be a number when present');
+  if (e.value !== undefined && (typeof e.value !== 'number' || !Number.isFinite(e.value))) {
+    throw new Error('telemetry "value" must be a finite number when present');
   }
   return input as TelemetryEvent;
+}
+
+// Start the HTTP server when run directly (not imported by tests).
+if (process.argv[1]?.endsWith('index.js') || process.argv[1]?.endsWith('index.ts')) {
+  const port = Number(process.env['INGESTION_PORT'] ?? 4001);
+  const apiKey = process.env['INGESTION_API_KEY'] ?? 'dev-ingest-key';
+
+  const pool = createPool();
+  await ensureSchema(pool);
+
+  const app = createApp(pool, apiKey);
+  app.listen(port, () => {
+    console.log(`[ingestion] listening on port ${port}`);
+  });
 }

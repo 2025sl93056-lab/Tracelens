@@ -32,4 +32,16 @@ describe('parseTelemetryEvent', () => {
   it('rejects a non-object', () => {
     expect(() => parseTelemetryEvent('oops')).toThrow(/must be an object/);
   });
+
+  it('rejects NaN and Infinity values', () => {
+    const base = {
+      type: 'metric',
+      service: 'payment-service',
+      timestamp: '2026-10-18T14:32:18.000Z',
+      name: 'http.latency.ms',
+    };
+    expect(() => parseTelemetryEvent({ ...base, value: NaN })).toThrow(/finite number/);
+    expect(() => parseTelemetryEvent({ ...base, value: Infinity })).toThrow(/finite number/);
+    expect(() => parseTelemetryEvent({ ...base, value: -Infinity })).toThrow(/finite number/);
+  });
 });

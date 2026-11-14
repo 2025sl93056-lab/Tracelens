@@ -1,0 +1,319 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  TraceLens — Dependency Manifest (pom.xml)
+  ==========================================
+  This file documents the direct runtime and development dependencies of the
+  TraceLens monorepo for open-source supply-chain transparency and academic
+  review purposes.
+
+  Project  : TraceLens
+  License  : Apache-2.0
+  Runtime  : Node.js >= 20 / npm >= 10
+  Repo     : https://github.com/2025sl93056-lab/Tracelens
+
+  NOTE: TraceLens is a Node.js / TypeScript project; this pom.xml is a
+  declarative dependency manifest following Maven POM conventions for
+  interoperability with academic SBOM tooling and supply-chain scanners.
+  It is NOT used to build the project (use `npm install` for that).
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+                             https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <!-- ── Project coordinates ─────────────────────────────────────────── -->
+  <groupId>io.github.tracelens</groupId>
+  <artifactId>tracelens</artifactId>
+  <version>0.1.0</version>
+  <packaging>pom</packaging>
+
+  <name>TraceLens</name>
+  <description>
+    Open-source evidence-driven incident intelligence and root-cause
+    investigation tool for distributed systems. Ingests telemetry (logs,
+    metrics, traces) and change events, detects incidents automatically,
+    builds an incident timeline, and correlates with recent deployments.
+  </description>
+  <url>https://github.com/2025sl93056-lab/Tracelens</url>
+  <inceptionYear>2026</inceptionYear>
+
+  <licenses>
+    <license>
+      <name>Apache License, Version 2.0</name>
+      <url>https://www.apache.org/licenses/LICENSE-2.0</url>
+      <distribution>repo</distribution>
+    </license>
+  </licenses>
+
+  <developers>
+    <developer>
+      <id>2025sl93039</id>
+      <name>Aryan Kumar Singh</name>
+      <roles>
+        <role>Contributor — M1 Ingestion API, Frontend UI Redesign, CI fixes</role>
+      </roles>
+      <url>https://github.com/2025sl93039</url>
+    </developer>
+  </developers>
+
+  <scm>
+    <connection>scm:git:https://github.com/2025sl93056-lab/Tracelens.git</connection>
+    <developerConnection>scm:git:https://github.com/2025sl93056-lab/Tracelens.git</developerConnection>
+    <url>https://github.com/2025sl93056-lab/Tracelens</url>
+    <tag>HEAD</tag>
+  </scm>
+
+  <!-- ── Module structure (npm workspaces) ───────────────────────────── -->
+  <modules>
+    <module>packages/shared</module>
+    <module>packages/demo-services</module>
+    <module>packages/ingestion</module>
+    <module>packages/correlation</module>
+    <module>packages/graph</module>
+    <module>packages/api</module>
+    <module>packages/frontend</module>
+  </modules>
+
+  <!-- ── Properties ──────────────────────────────────────────────────── -->
+  <properties>
+    <node.version>20</node.version>
+    <npm.version>10</npm.version>
+    <typescript.version>5.6.2</typescript.version>
+    <vitest.version>2.1.2</vitest.version>
+
+    <!-- Runtime dependency versions -->
+    <express.version>4.21.0</express.version>
+    <pg.version>8.13.0</pg.version>
+    <jsonwebtoken.version>9.0.2</jsonwebtoken.version>
+    <react.version>18.3.1</react.version>
+    <react-router-dom.version>6.27.0</react-router-dom.version>
+    <xyflow-react.version>12.3.6</xyflow-react.version>
+    <vite.version>5.4.8</vite.version>
+
+    <!-- Dev / tooling versions -->
+    <prettier.version>3.3.3</prettier.version>
+    <eslint.version>9.12.0</eslint.version>
+    <tsx.version>4.19.1</tsx.version>
+    <supertest.version>7.0.0</supertest.version>
+    <vitejs-plugin-react.version>4.3.2</vitejs-plugin-react.version>
+  </properties>
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       DIRECT RUNTIME DEPENDENCIES
+       (production dependencies present in every deployed package)
+       ═══════════════════════════════════════════════════════════════════ -->
+  <dependencies>
+
+    <!-- ── packages/ingestion, packages/demo-services, packages/api ── -->
+    <dependency>
+      <groupId>npm:express</groupId>
+      <artifactId>express</artifactId>
+      <version>4.21.0</version>
+      <scope>runtime</scope>
+      <type>npm</type>
+      <optional>false</optional>
+      <exclusions/>
+    </dependency>
+
+    <!-- ── packages/ingestion ── -->
+    <dependency>
+      <groupId>npm:pg</groupId>
+      <artifactId>pg</artifactId>
+      <version>8.13.0</version>
+      <scope>runtime</scope>
+      <type>npm</type>
+    </dependency>
+
+    <!-- ── packages/api ── -->
+    <dependency>
+      <groupId>npm:jsonwebtoken</groupId>
+      <artifactId>jsonwebtoken</artifactId>
+      <version>9.0.2</version>
+      <scope>runtime</scope>
+      <type>npm</type>
+    </dependency>
+
+    <!-- ── packages/frontend ── -->
+    <dependency>
+      <groupId>npm:react</groupId>
+      <artifactId>react</artifactId>
+      <version>18.3.1</version>
+      <scope>runtime</scope>
+      <type>npm</type>
+    </dependency>
+
+    <dependency>
+      <groupId>npm:react-dom</groupId>
+      <artifactId>react-dom</artifactId>
+      <version>18.3.1</version>
+      <scope>runtime</scope>
+      <type>npm</type>
+    </dependency>
+
+    <dependency>
+      <groupId>npm:react-router-dom</groupId>
+      <artifactId>react-router-dom</artifactId>
+      <version>6.27.0</version>
+      <scope>runtime</scope>
+      <type>npm</type>
+    </dependency>
+
+    <dependency>
+      <groupId>npm:@xyflow/react</groupId>
+      <artifactId>xyflow__react</artifactId>
+      <version>12.3.6</version>
+      <scope>runtime</scope>
+      <type>npm</type>
+    </dependency>
+
+    <!-- ══════════════════════════════════════════════════════════════════
+         DEVELOPMENT / BUILD DEPENDENCIES
+         (tooling only — not shipped to production)
+         ══════════════════════════════════════════════════════════════════ -->
+
+    <!-- Root monorepo -->
+    <dependency>
+      <groupId>npm:typescript</groupId>
+      <artifactId>typescript</artifactId>
+      <version>5.6.2</version>
+      <scope>provided</scope>
+      <type>npm</type>
+    </dependency>
+
+    <dependency>
+      <groupId>npm:vitest</groupId>
+      <artifactId>vitest</artifactId>
+      <version>2.1.2</version>
+      <scope>test</scope>
+      <type>npm</type>
+    </dependency>
+
+    <dependency>
+      <groupId>npm:eslint</groupId>
+      <artifactId>eslint</artifactId>
+      <version>9.12.0</version>
+      <scope>provided</scope>
+      <type>npm</type>
+    </dependency>
+
+    <dependency>
+      <groupId>npm:prettier</groupId>
+      <artifactId>prettier</artifactId>
+      <version>3.3.3</version>
+      <scope>provided</scope>
+      <type>npm</type>
+    </dependency>
+
+    <dependency>
+      <groupId>npm:tsx</groupId>
+      <artifactId>tsx</artifactId>
+      <version>4.19.1</version>
+      <scope>provided</scope>
+      <type>npm</type>
+    </dependency>
+
+    <dependency>
+      <groupId>npm:typescript-eslint</groupId>
+      <artifactId>typescript-eslint</artifactId>
+      <version>8.8.0</version>
+      <scope>provided</scope>
+      <type>npm</type>
+    </dependency>
+
+    <dependency>
+      <groupId>npm:@types/node</groupId>
+      <artifactId>types__node</artifactId>
+      <version>20.16.11</version>
+      <scope>provided</scope>
+      <type>npm</type>
+    </dependency>
+
+    <!-- packages/ingestion dev -->
+    <dependency>
+      <groupId>npm:supertest</groupId>
+      <artifactId>supertest</artifactId>
+      <version>7.0.0</version>
+      <scope>test</scope>
+      <type>npm</type>
+    </dependency>
+
+    <dependency>
+      <groupId>npm:@types/supertest</groupId>
+      <artifactId>types__supertest</artifactId>
+      <version>6.0.2</version>
+      <scope>test</scope>
+      <type>npm</type>
+    </dependency>
+
+    <dependency>
+      <groupId>npm:@types/pg</groupId>
+      <artifactId>types__pg</artifactId>
+      <version>8.11.10</version>
+      <scope>provided</scope>
+      <type>npm</type>
+    </dependency>
+
+    <!-- packages/api dev -->
+    <dependency>
+      <groupId>npm:@types/express</groupId>
+      <artifactId>types__express</artifactId>
+      <version>4.17.21</version>
+      <scope>provided</scope>
+      <type>npm</type>
+    </dependency>
+
+    <dependency>
+      <groupId>npm:@types/jsonwebtoken</groupId>
+      <artifactId>types__jsonwebtoken</artifactId>
+      <version>9.0.7</version>
+      <scope>provided</scope>
+      <type>npm</type>
+    </dependency>
+
+    <!-- packages/frontend dev -->
+    <dependency>
+      <groupId>npm:vite</groupId>
+      <artifactId>vite</artifactId>
+      <version>5.4.8</version>
+      <scope>provided</scope>
+      <type>npm</type>
+    </dependency>
+
+    <dependency>
+      <groupId>npm:@vitejs/plugin-react</groupId>
+      <artifactId>vitejs__plugin-react</artifactId>
+      <version>4.3.2</version>
+      <scope>provided</scope>
+      <type>npm</type>
+    </dependency>
+
+    <dependency>
+      <groupId>npm:@types/react</groupId>
+      <artifactId>types__react</artifactId>
+      <version>18.3.11</version>
+      <scope>provided</scope>
+      <type>npm</type>
+    </dependency>
+
+    <dependency>
+      <groupId>npm:@types/react-dom</groupId>
+      <artifactId>types__react-dom</artifactId>
+      <version>18.3.0</version>
+      <scope>provided</scope>
+      <type>npm</type>
+    </dependency>
+
+    <!-- CI / Linux optional -->
+    <dependency>
+      <groupId>npm:@rollup/rollup-linux-x64-gnu</groupId>
+      <artifactId>rollup__rollup-linux-x64-gnu</artifactId>
+      <version>4.64.9</version>
+      <scope>provided</scope>
+      <type>npm</type>
+      <optional>true</optional>
+    </dependency>
+
+  </dependencies>
+
+</project>

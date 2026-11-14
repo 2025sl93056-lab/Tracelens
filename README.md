@@ -37,14 +37,14 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the design and [docs/ROADMA
 
 ## Tech stack
 
-| Layer | Technology |
-|---|---|
+| Layer            | Technology                     |
+| ---------------- | ------------------------------ |
 | Backend services | Node.js + TypeScript (Express) |
-| Frontend | React + TypeScript (Vite) |
-| Storage | PostgreSQL |
-| Packaging / run | Docker + Docker Compose |
-| Tests | Vitest |
-| CI | GitHub Actions |
+| Frontend         | React + TypeScript (Vite)      |
+| Storage          | PostgreSQL                     |
+| Packaging / run  | Docker + Docker Compose        |
+| Tests            | Vitest                         |
+| CI               | GitHub Actions                 |
 
 ## Repository layout
 
@@ -86,6 +86,20 @@ docker compose up --build
 # Ingestion:    http://localhost:4001
 ```
 
+The stack includes Postgres, Adminer, ingestion, the API, and the dashboard. Sign in to the local
+dashboard with the demo account `admin` / `admin` (or `viewer` / `viewer`); **Try demo** instead uses
+browser mock data and does not verify the API connection.
+
+The frontend image serves the production build on port 5173. Browser requests use the dashboard's
+same-origin `/api` route, which Nginx forwards to `api:4000` on the Compose network. The browser does
+not need to resolve Docker service names or make cross-origin API requests. `API_PORT` changes the
+API's published host port; its internal port remains 4000. `FRONTEND_PORT` changes the dashboard's
+loopback host port.
+
+`VITE_API_BASE_URL` is public **build-time** configuration, passed through Compose's build arguments.
+Keep its default `/api` for this stack. Rebuild the frontend after changing it; setting a runtime
+environment variable on the already-built static image does not change the bundle.
+
 ### Run a package in dev (without Docker)
 
 ```bash
@@ -100,6 +114,12 @@ npm test          # run all tests (Vitest)
 npm run lint      # lint all packages
 npm run format    # format with Prettier
 ```
+
+The PostgreSQL integration tests are opt-in. With a disposable PostgreSQL instance and a user that
+can create test databases, run `npm run build` first, then `POSTGRES_HOST=localhost npm test` with
+the matching `POSTGRES_PORT`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, and `POSTGRES_DB` settings. The
+startup regression executes the compiled ingestion entry point, creates its own temporary database,
+and removes it afterwards.
 
 ## Contributing
 

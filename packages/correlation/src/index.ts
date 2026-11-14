@@ -43,3 +43,15 @@ export function isAnomalous(
   const deltaPct = percentDelta(current, mean(baseline));
   return { anomalous: Math.abs(deltaPct) >= thresholdPct, deltaPct };
 }
+
+export { detectAnomalies } from './anomaly.js';
+export type { AnomalyResult } from './anomaly.js';
+
+export { groupByTimeWindow } from './temporalCorrelation.js';
+export type { AnomalyGroup } from './temporalCorrelation.js';
+
+export { findCoAnomalousServices } from './serviceCorrelation.js';
+
+export { collectChanges } from './whatChanged.js';
+
+export { buildIncident } from './incidentFactory.js';
