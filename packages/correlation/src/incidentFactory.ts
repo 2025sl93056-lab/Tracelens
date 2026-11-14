@@ -54,11 +54,11 @@ export function buildIncident(
   }
 
   const windowStart = Date.parse(group.windowStart);
-  // Filter to services with observed anomalies, then sort by earliest onset
-  const anomalousServices = services.filter((s) => onsetByService.has(s));
-  const sortedServices = anomalousServices.sort(
-    (a, b) => (onsetByService.get(a) ?? Infinity) - (onsetByService.get(b) ?? Infinity),
-  );
+  // Filter to services with observed anomalies, then sort by earliest onset.
+  // `.filter()` yields a fresh array, so sorting it never mutates the caller's input.
+  const sortedServices = services
+    .filter((s) => onsetByService.has(s))
+    .sort((a, b) => (onsetByService.get(a) ?? Infinity) - (onsetByService.get(b) ?? Infinity));
 
   const candidates = sortedServices.map((svc, idx) => {
     const onset = onsetByService.get(svc) ?? windowStart;
@@ -85,7 +85,7 @@ export function buildIncident(
     startedAt: group.windowStart,
     severity,
     status: 'open',
-    affectedServices: services,
+    affectedServices: [...services],
     timeline,
     signals,
     changes,
