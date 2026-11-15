@@ -109,6 +109,30 @@ Returns the full `Incident` (timeline, signals, changes, ranked candidates).
 | `200`  | `Incident`          |
 | `404`  | unknown incident id |
 
+### `GET /incidents/:id/graph` — _viewer_
+
+Returns a `DependencyGraph` scoped to the incident: just its `affectedServices`
+and their one-hop neighbourhood (direct callers and direct dependencies),
+together with every edge between the included nodes. This lets the dashboard
+render the relevant slice of the graph for an incident instead of fetching the
+whole graph (`GET /graph`) and filtering it client-side.
+
+```jsonc
+// GET /incidents/INC-1043/graph   (INC-1043 affects "inventory")
+{
+  "nodes": [
+    { "id": "order", "kind": "service", "label": "order" },
+    { "id": "inventory", "kind": "service", "label": "inventory" },
+  ],
+  "edges": [{ "from": "order", "to": "inventory", "kind": "CALLS" }],
+}
+```
+
+| Status | Meaning             |
+| ------ | ------------------- |
+| `200`  | `DependencyGraph`   |
+| `404`  | unknown incident id |
+
 ### `GET /services` — _viewer_
 
 Returns the `service` nodes of the dependency graph (`GraphNode[]`).
