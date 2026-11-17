@@ -76,3 +76,66 @@ export function downstreamImpact(graph: DependencyGraph, start: string): ImpactR
 export function upstreamImpact(graph: DependencyGraph, start: string): ImpactResult {
   return computeImpact(graph, start, 'upstream');
 }
+
+/**
+ * Extract the subgraph induced by a set of `seed` node ids plus their
+ * neighbourhood within `hops` edges in **either** direction (callers and
+ * dependencies), together with every edge of the original graph whose endpoints
+ * are both included.
+ *
+ * This is the building block for an incident-scoped view: given the services an
+ * incident affects, return just those services and their immediate surroundings
+ * so the dashboard can render the relevant slice of the graph instead of
+ * filtering the whole thing client-side.
+ *
+ * - Seed ids that are not present in the graph are ignored.
+ * - `hops = 0` returns only the (existing) seed nodes and the edges among them.
+ * - Traversal is breadth-first and cycle-safe; node and edge objects from the
+ *   source graph are preserved by reference (their order is preserved too).
+ */
+export function subgraph(
+  graph: DependencyGraph,
+  seeds: readonly string[],
+  hops = 1,
+): DependencyGraph {
+  const present = new Set(graph.nodes.map((n) => n.id));
+
+  // Undirected adjacency so a single traversal reaches callers and dependencies.
+  const neighbours = new Map<string, string[]>();
+  const link = (a: string, b: string) => {
+    const list = neighbours.get(a) ?? [];
+    list.push(b);
+    neighbours.set(a, list);
+  };
+  for (const edge of graph.edges) {
+    link(edge.from, edge.to);
+    link(edge.to, edge.from);
+  }
+
+  const included = new Set<string>();
+  let frontier: string[] = [];
+  for (const seed of seeds) {
+    if (present.has(seed) && !included.has(seed)) {
+      included.add(seed);
+      frontier.push(seed);
+    }
+  }
+
+  for (let hop = 0; hop < hops && frontier.length > 0; hop++) {
+    const next: string[] = [];
+    for (const node of frontier) {
+      for (const neighbour of neighbours.get(node) ?? []) {
+        if (!included.has(neighbour)) {
+          included.add(neighbour);
+          next.push(neighbour);
+        }
+      }
+    }
+    frontier = next;
+  }
+
+  return {
+    nodes: graph.nodes.filter((n) => included.has(n.id)),
+    edges: graph.edges.filter((e) => included.has(e.from) && included.has(e.to)),
+  };
+}

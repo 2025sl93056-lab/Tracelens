@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **ingestion**: HTTP API (`POST /telemetry`, `POST /telemetry/batch`, `GET /health`) with API-key auth, validation, and PostgreSQL persistence (resolves #1).
 - **ingestion**: Dockerfile for containerised deployment; ingestion service wired into `docker-compose.yml`.
 - **graph/api**: direction-aware impact analysis — `upstreamImpact`/`computeImpact` in `@tracelens/graph` and a `direction=downstream|upstream` query param on `GET /graph/impact`, so the API can answer "who is affected if this service degrades?" (upstream dependents) as well as "what does it depend on?" (downstream). `ImpactResult` now carries the `direction` it was computed for.
+- **graph/api**: per-incident dependency subgraph — `subgraph()` in `@tracelens/graph` and a new `GET /incidents/:id/graph` endpoint returning the incident's affected services and their one-hop neighbourhood as a `DependencyGraph`, so the dashboard can render an incident's blast radius without fetching and filtering the whole graph (resolves #31).
 
 ### Fixed
 
