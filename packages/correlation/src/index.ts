@@ -55,3 +55,6 @@ export { findCoAnomalousServices } from './serviceCorrelation.js';
 export { collectChanges } from './whatChanged.js';
 
 export { buildIncident } from './incidentFactory.js';
+
+export { runCorrelation } from './pipeline.js';
+export type { CorrelationOptions } from './pipeline.js';

@@ -11,6 +11,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
+    "@tracelens/graph": "*",
     "@tracelens/shared": "*"
   }
 }
