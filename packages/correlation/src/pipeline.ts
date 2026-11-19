@@ -1,4 +1,5 @@
 import type { Incident, TelemetryEvent } from '@tracelens/shared';
+import { deriveGraphFromSpans } from '@tracelens/graph';
 import { detectAnomalies } from './anomaly.js';
 import { groupByTimeWindow } from './temporalCorrelation.js';
 import { findCoAnomalousServices } from './serviceCorrelation.js';
@@ -40,6 +41,11 @@ export function runCorrelation(
   const anomalies = detectAnomalies(events, windowSize, thresholdPct);
   const groups = groupByTimeWindow(anomalies, maxGapMs);
 
+  // The service dependency graph is observed from trace spans in the same
+  // stream. It enriches candidate ranking with blast-radius; an empty graph
+  // (no spans) leaves ranking onset-only.
+  const graph = deriveGraphFromSpans(events);
+
   return groups.map((group) => {
     const services = findCoAnomalousServices(group);
     // Widen the change search backwards so a deploy just before onset is caught.
@@ -47,6 +53,6 @@ export function runCorrelation(
       Date.parse(group.windowStart) - changeLookbackMs,
     ).toISOString();
     const changes = collectChanges(events, changeWindowStart, group.windowEnd);
-    return buildIncident(group, services, changes);
+    return buildIncident(group, services, changes, undefined, graph);
   });
 }
