@@ -15,18 +15,21 @@ export const MOCK_INCIDENTS: IncidentSummary[] = [
     id: 'INC-1042',
     startedAt: '2026-10-27T10:14:00Z',
     severity: 'critical',
+    status: 'open',
     affectedServices: ['payment-service', 'order-service'],
   },
   {
     id: 'INC-1041',
     startedAt: '2026-10-27T08:02:00Z',
     severity: 'high',
+    status: 'resolved',
     affectedServices: ['inventory-service'],
   },
   {
     id: 'INC-1040',
     startedAt: '2026-10-26T22:30:00Z',
     severity: 'medium',
+    status: 'resolved',
     affectedServices: ['notification-service'],
   },
 ];
@@ -36,6 +39,7 @@ export const MOCK_INCIDENT_DETAIL: Record<string, Incident> = {
     id: 'INC-1042',
     startedAt: '2026-10-27T10:14:00Z',
     severity: 'critical',
+    status: 'open',
     affectedServices: ['payment-service', 'order-service'],
     timeline: [
       { at: '2026-10-27T10:00:00Z', kind: 'deploy', text: 'payment-service v4.3.1 deployed to production' },
@@ -76,6 +80,7 @@ export const MOCK_INCIDENT_DETAIL: Record<string, Incident> = {
     id: 'INC-1041',
     startedAt: '2026-10-27T08:02:00Z',
     severity: 'high',
+    status: 'resolved',
     affectedServices: ['inventory-service'],
     timeline: [
       { at: '2026-10-27T07:55:00Z', kind: 'deploy', text: 'inventory-service v2.1.0 deployed' },
@@ -97,6 +102,7 @@ export const MOCK_INCIDENT_DETAIL: Record<string, Incident> = {
     id: 'INC-1040',
     startedAt: '2026-10-26T22:30:00Z',
     severity: 'medium',
+    status: 'resolved',
     affectedServices: ['notification-service'],
     timeline: [
       { at: '2026-10-26T22:30:00Z', kind: 'signal', text: 'notification delivery failure rate > 2%' },

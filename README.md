@@ -1,5 +1,8 @@
 # TraceLens
 
+[![CI](https://github.com/2025sl93056-lab/Tracelens/actions/workflows/ci.yml/badge.svg)](https://github.com/2025sl93056-lab/Tracelens/actions/workflows/ci.yml)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
+
 **From Alert to Root Cause.**
 
 TraceLens is an open-source, evidence-driven **incident intelligence and root-cause investigation** tool for distributed systems. It ingests telemetry (logs, metrics, traces) and change events (deployments, config changes), automatically detects incidents, builds an **incident timeline**, correlates it with **recent changes ("What changed?")**, and renders a **service dependency graph** so engineers can move from _alert → evidence → probable cause → affected components_.
@@ -42,6 +45,7 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the design and [docs/ROADMA
 | Backend services | Node.js + TypeScript (Express) |
 | Frontend         | React + TypeScript (Vite)      |
 | Storage          | PostgreSQL                     |
+| Metrics          | Prometheus + Grafana           |
 | Packaging / run  | Docker + Docker Compose        |
 | Tests            | Vitest                         |
 | CI               | GitHub Actions                 |
@@ -84,11 +88,15 @@ docker compose up --build
 # Dashboard:    http://localhost:5173
 # Core API:     http://localhost:4000
 # Ingestion:    http://localhost:4001
+# Grafana:      http://localhost:3001  (admin / admin)
+# Prometheus:   http://localhost:9090
 ```
 
-The stack includes Postgres, Adminer, ingestion, the API, and the dashboard. Sign in to the local
+The stack includes Postgres, Adminer, ingestion, the API, the dashboard, Prometheus, and Grafana. Sign in to the local
 dashboard with the demo account `admin` / `admin` (or `viewer` / `viewer`); **Try demo** instead uses
 browser mock data and does not verify the API connection.
+
+Grafana is pre-configured with three dashboards (API & Telemetry Metrics, Incidents, Service Health). See [docs/observability.md](docs/observability.md) for details.
 
 The frontend image serves the production build on port 5173. Browser requests use the dashboard's
 same-origin `/api` route, which Nginx forwards to `api:4000` on the Compose network. The browser does

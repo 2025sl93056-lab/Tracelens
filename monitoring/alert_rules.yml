@@ -1,0 +1,102 @@
+groups:
+  # ── Recording rules: pre-compute expensive queries ──────────────────────────
+  - name: tracelens_recording
+    interval: 30s
+    rules:
+      - record: job:http_request_duration_seconds:p95
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(http_request_duration_seconds_bucket[5m])) by (le, job)
+          )
+
+      - record: job:http_request_duration_seconds:p99
+        expr: |
+          histogram_quantile(0.99,
+            sum(rate(http_request_duration_seconds_bucket[5m])) by (le, job)
+          )
+
+      - record: job:http_error_rate:ratio5m
+        expr: |
+          sum(rate(http_request_errors_total[5m])) by (job)
+          /
+          sum(rate(http_requests_total[5m])) by (job)
+
+      - record: job:http_requests:rate5m
+        expr: |
+          sum(rate(http_requests_total[5m])) by (job)
+
+  # ── Alert rules ─────────────────────────────────────────────────────────────
+  - name: tracelens_alerts
+    rules:
+      - alert: ServiceDown
+        expr: up{job=~"tracelens-.*"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $labels.job }} is down"
+          description: "Prometheus cannot scrape {{ $labels.job }} at {{ $labels.instance }}. The service may be crashed or unreachable."
+
+      - alert: HighErrorRate
+        expr: job:http_error_rate:ratio5m > 0.05
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High HTTP error rate on {{ $labels.job }}"
+          description: "{{ $labels.job }} error rate is {{ $value | humanizePercentage }} (threshold 5%) over the last 5 minutes."
+
+      - alert: CriticalErrorRate
+        expr: job:http_error_rate:ratio5m > 0.20
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Critical HTTP error rate on {{ $labels.job }}"
+          description: "{{ $labels.job }} error rate is {{ $value | humanizePercentage }} (threshold 20%) — likely a full outage."
+
+      - alert: HighLatencyP95
+        expr: job:http_request_duration_seconds:p95 > 1
+        for: 3m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High p95 latency on {{ $labels.job }}"
+          description: "p95 request duration for {{ $labels.job }} is {{ $value | humanizeDuration }} (threshold 1 s)."
+
+      - alert: HighLatencyP99
+        expr: job:http_request_duration_seconds:p99 > 2.5
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Critical p99 latency on {{ $labels.job }}"
+          description: "p99 request duration for {{ $labels.job }} is {{ $value | humanizeDuration }} (threshold 2.5 s)."
+
+      - alert: CriticalIncidentOpen
+        expr: tracelens_active_incidents{severity="critical"} > 0
+        for: 0m
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $value }} critical incident(s) open"
+          description: "TraceLens is tracking {{ $value }} open critical incident(s). Immediate investigation required."
+
+      - alert: HighHeapUsage
+        expr: |
+          nodejs_heap_size_used_bytes / nodejs_heap_size_total_bytes > 0.85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High Node.js heap usage on {{ $labels.job }}"
+          description: "{{ $labels.job }} is using {{ $value | humanizePercentage }} of its heap (threshold 85%)."
+
+      - alert: IngestRejectionSpike
+        expr: rate(tracelens_ingest_rejected_total[5m]) > 10
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High ingestion rejection rate"
+          description: "Ingestion service is rejecting more than 10 requests/s. Check for misconfigured clients or an attack."

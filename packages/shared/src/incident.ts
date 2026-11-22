@@ -57,6 +57,7 @@ export interface Incident {
   /** ISO-8601 time the incident started. */
   startedAt: string;
   severity: Severity;
+  status: 'open' | 'resolved';
   affectedServices: string[];
   timeline: TimelineEntry[];
   signals: Signal[];
