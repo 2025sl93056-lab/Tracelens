@@ -8,10 +8,15 @@
   "types": "dist/index.d.ts",
   "scripts": {
     "build": "tsc --build",
+    "start": "node dist/correlate.js",
     "clean": "rm -rf dist"
   },
   "dependencies": {
     "@tracelens/graph": "*",
-    "@tracelens/shared": "*"
+    "@tracelens/shared": "*",
+    "pg": "^8.13.0"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.11.10"
   }
 }

@@ -58,3 +58,6 @@ export { buildIncident } from './incidentFactory.js';
 
 export { runCorrelation } from './pipeline.js';
 export type { CorrelationOptions } from './pipeline.js';
+
+export { readTelemetryEvents, persistIncidents, runCorrelationJob } from './runner.js';
+export type { Queryable, CorrelationJobResult } from './runner.js';
