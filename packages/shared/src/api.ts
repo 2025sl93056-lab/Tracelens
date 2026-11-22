@@ -25,6 +25,15 @@ export interface IncidentSummary {
   startedAt: string;
   severity: Severity;
   affectedServices: string[];
+  status: 'open' | 'resolved';
+}
+
+/** Paginated envelope returned by `GET /incidents`. */
+export interface IncidentListResponse {
+  items: IncidentSummary[];
+  total: number;
+  limit: number;
+  offset: number;
 }
 
 export interface CreateUserRequest {
