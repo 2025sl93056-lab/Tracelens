@@ -203,6 +203,22 @@ export function createApp(deps: AppDeps): Express {
     },
   );
 
+  // Per-incident dependency subgraph: just the affected services and their
+  // one-hop neighbourhood, so the dashboard renders the relevant slice instead
+  // of fetching and filtering the whole graph client-side.
+  app.get(
+    `${API_ROUTES.incidents}/:id/graph`,
+    requireRole(auth, 'viewer'),
+    (req: Request, res: Response) => {
+      const graph = store.getIncidentGraph(req.params.id);
+      if (!graph) {
+        res.status(404).json({ error: `incident ${req.params.id} not found` });
+        return;
+      }
+      res.json(graph);
+    },
+  );
+
   // --- Services (viewer) ----------------------------------------------------
   app.get(API_ROUTES.services, requireRole(auth, 'viewer'), (_req: Request, res: Response) => {
     res.json(store.listServices());

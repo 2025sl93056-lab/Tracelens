@@ -355,3 +355,45 @@ describe('data routes', () => {
   });
 });
 
+describe('GET /incidents/:id/graph', () => {
+  it('returns the subgraph scoped to the incident (affected services ±1 hop)', async () => {
+    // INC-1043 affects only "inventory". Its one-hop neighbourhood is its caller
+    // "order"; the rest of the graph (gateway, payment, db-sim) is excluded.
+    const res = await fetch(`${base}/incidents/INC-1043/graph`, {
+      headers: auth_header(await token('viewer', 'viewer-pw')),
+    });
+    expect(res.status).toBe(200);
+    const graph = (await res.json()) as DependencyGraph;
+    expect(graph.nodes.map((n) => n.id).sort()).toEqual(['inventory', 'order']);
+    expect(graph.edges).toEqual([{ from: 'order', to: 'inventory', kind: 'CALLS' }]);
+  });
+
+  it('returns a valid DependencyGraph containing the affected services', async () => {
+    const res = await fetch(`${base}/incidents/INC-1042/graph`, {
+      headers: auth_header(await token('viewer', 'viewer-pw')),
+    });
+    expect(res.status).toBe(200);
+    const graph = (await res.json()) as DependencyGraph;
+    const ids = new Set(graph.nodes.map((n) => n.id));
+    // INC-1042's affected services are present...
+    expect(ids.has('payment')).toBe(true);
+    expect(ids.has('order')).toBe(true);
+    // ...and the result is a valid graph: every edge references included nodes.
+    for (const edge of graph.edges) {
+      expect(ids.has(edge.from)).toBe(true);
+      expect(ids.has(edge.to)).toBe(true);
+    }
+  });
+
+  it('returns 404 for an unknown incident id', async () => {
+    const res = await fetch(`${base}/incidents/INC-9999/graph`, {
+      headers: auth_header(await token('viewer', 'viewer-pw')),
+    });
+    expect(res.status).toBe(404);
+  });
+
+  it('requires authentication (401 without a token)', async () => {
+    const res = await fetch(`${base}/incidents/INC-1042/graph`);
+    expect(res.status).toBe(401);
+  });
+});
